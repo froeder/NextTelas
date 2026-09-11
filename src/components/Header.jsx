@@ -47,16 +47,18 @@ export const Header = ({ user }) => {
           <View style={styles.logoIconBg}>
             <Icon name="film" size={18} color="#FFF" />
           </View>
-          <View>
-            <View style={styles.brandTitleRow}>
-              <Text style={styles.brandName}>
-                Next<Text style={styles.brandAccent}>Telas</Text>
+          <View style={styles.brandTextCol}>
+            <Text style={styles.brandName}>
+              Next<Text style={styles.brandAccent}>Telas</Text>
+            </Text>
+            <View style={styles.taglineRow}>
+              <Text style={styles.tagline} numberOfLines={1}>
+                Descoberta por Padrões
               </Text>
               <View style={styles.versionBadge}>
                 <Text style={styles.versionBadgeText}>v{versionData.version}</Text>
               </View>
             </View>
-            <Text style={styles.tagline}>Descoberta por Padrões</Text>
           </View>
         </View>
 
@@ -154,6 +156,8 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
   },
   logoIconBg: {
     backgroundColor: theme.colors.primary,
@@ -164,10 +168,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
-  brandTitleRow: {
+  brandTextCol: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  taglineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginTop: 1,
   },
   brandName: {
     color: theme.colors.text,
@@ -185,6 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: theme.borderRadius.xs,
+    flexShrink: 0,
   },
   versionBadgeText: {
     color: theme.colors.primary,
@@ -196,12 +206,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: 10,
     fontWeight: '500',
-    marginTop: -2,
+    flexShrink: 1,
   },
   userActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   userBadge: {
     flexDirection: 'row',
