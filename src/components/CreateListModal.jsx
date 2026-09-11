@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
+import { registerModalHistory } from '../utils/pwaHistory';
 
 const AVAILABLE_ICONS = ['film', 'flame', 'star', 'sparkles', 'trending-up', 'analytics'];
 
@@ -18,6 +19,14 @@ export const CreateListModal = ({ visible, onClose, onCreate }) => {
   const [selectedIcon, setSelectedIcon] = useState('film');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
+  useEffect(() => {
+    if (visible && onClose) {
+      const unregister = registerModalHistory(onClose);
+      return () => unregister();
+    }
+  }, [visible, onClose]);
 
   const handleCreate = async () => {
     if (!listName.trim()) {

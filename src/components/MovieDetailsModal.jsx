@@ -21,6 +21,7 @@ import {
   getMovieRecommendations,
 } from '../services/tmdbService';
 import { getGenreNames } from '../utils/tmdbGenres';
+import { registerModalHistory } from '../utils/pwaHistory';
 
 export const MovieDetailsModal = ({
   visible,
@@ -68,6 +69,14 @@ export const MovieDetailsModal = ({
       isMounted = false;
     };
   }, [visible, movie?.id]);
+
+  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
+  useEffect(() => {
+    if (visible && onClose) {
+      const unregister = registerModalHistory(onClose);
+      return () => unregister();
+    }
+  }, [visible, onClose]);
 
   if (!movie) return null;
 

@@ -17,6 +17,7 @@ import { extractTopGenres } from '../utils/genreExtractor';
 import { CreateListModal } from '../components/CreateListModal';
 import { MoveToListModal } from '../components/MoveToListModal';
 import { getMovieDetails } from '../services/tmdbService';
+import { registerModalHistory } from '../utils/pwaHistory';
 
 export const WatchedScreen = ({
   user,
@@ -42,6 +43,14 @@ export const WatchedScreen = ({
   const [showCreateListModal, setShowCreateListModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [singleMovieToMove, setSingleMovieToMove] = useState(null);
+
+  // Registra no histórico do navegador para fechar o modal de confirmação de exclusão com gesto voltar
+  useEffect(() => {
+    if (movieToRemove) {
+      const unregister = registerModalHistory(() => setMovieToRemove(null));
+      return () => unregister();
+    }
+  }, [movieToRemove]);
 
   // Filtra filmes da lista ativa e ordena alfabeticamente
   const filteredMovies = (activeListId === 'all'

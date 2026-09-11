@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,19 @@ import {
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { logoutUser } from '../services/authService';
+import { registerModalHistory } from '../utils/pwaHistory';
 
 export const Header = ({ user }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
+  useEffect(() => {
+    if (showLogoutModal) {
+      const unregister = registerModalHistory(() => setShowLogoutModal(false));
+      return () => unregister();
+    }
+  }, [showLogoutModal]);
 
   const handleConfirmLogout = async () => {
     try {

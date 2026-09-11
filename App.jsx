@@ -22,6 +22,7 @@ import { RecommendationsScreen } from './src/screens/RecommendationsScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { WatchedScreen } from './src/screens/WatchedScreen';
 import { getMovieDetails } from './src/services/tmdbService';
+import { pushTabHistory } from './src/utils/pwaHistory';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -31,6 +32,22 @@ export default function App() {
   const [customLists, setCustomLists] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
   const [selectedListIdForRecommendations, setSelectedListIdForRecommendations] = useState('all');
+
+  // Escuta o evento customizado pwa-tab-change (gesto voltar trocando de aba)
+  useEffect(() => {
+    const handlePwaTabChange = (e) => {
+      if (e.detail?.tab) {
+        setActiveTab(e.detail.tab);
+      }
+    };
+    window.addEventListener('pwa-tab-change', handlePwaTabChange);
+    return () => window.removeEventListener('pwa-tab-change', handlePwaTabChange);
+  }, []);
+
+  const handleSelectTab = (tab) => {
+    setActiveTab(tab);
+    pushTabHistory(tab);
+  };
 
   // Escuta o estado de autenticação do Firebase
   useEffect(() => {
@@ -332,7 +349,7 @@ export default function App() {
       {/* Barra de Navegação Inferior Customizada */}
       <CustomTabBar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         watchedCount={watchedMovies.length}
       />
     </View>

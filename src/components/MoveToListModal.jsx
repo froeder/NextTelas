@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
+import { registerModalHistory } from '../utils/pwaHistory';
 
 export const MoveToListModal = ({
   visible,
@@ -20,6 +21,14 @@ export const MoveToListModal = ({
   onOpenCreateList,
 }) => {
   const [loadingListId, setLoadingListId] = useState(null);
+
+  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
+  useEffect(() => {
+    if (visible && onClose) {
+      const unregister = registerModalHistory(onClose);
+      return () => unregister();
+    }
+  }, [visible, onClose]);
 
   const handleSelectTarget = async (targetId) => {
     try {
