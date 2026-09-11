@@ -18,6 +18,7 @@ import {
   formatRuntime,
   getMoviePosterUrl,
   getMovieBackdropUrl,
+  getMovieRecommendations,
 } from '../services/tmdbService';
 import { getGenreNames } from '../utils/tmdbGenres';
 
@@ -36,21 +37,31 @@ export const MovieDetailsModal = ({
   const [details, setDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [similarMovies, setSimilarMovies] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
     if (visible && movie?.id) {
       const loadDetails = async () => {
         setLoadingDetails(true);
-        const { data } = await getMovieDetails(movie.id);
+        setSimilarMovies([]);
+        // Busca detalhes e semelhantes em paralelo
+        const [detailResult, similarResult] = await Promise.allSettled([
+          getMovieDetails(movie.id),
+          getMovieRecommendations(movie.id, 1),
+        ]);
         if (isMounted) {
-          setDetails(data);
+          if (detailResult.status === 'fulfilled') setDetails(detailResult.value.data);
+          if (similarResult.status === 'fulfilled') {
+            setSimilarMovies((similarResult.value.results || []).slice(0, 10));
+          }
           setLoadingDetails(false);
         }
       };
       loadDetails();
     } else {
       setDetails(null);
+      setSimilarMovies([]);
     }
 
     return () => {
@@ -269,6 +280,82 @@ export const MovieDetailsModal = ({
                     </View>
                   ))}
                 </View>
+              </View>
+            )}
+
+            {/* ── Seção Semelhantes ── */}
+            {similarMovies.length > 0 && (
+              <View style={styles.similarSection}>
+                <View style={styles.similarHeader}>
+                  <Icon name="film" size={15} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.similarTitle}>Semelhantes</Text>
+                  <Text style={styles.similarCount}>{similarMovies.length} títulos</Text>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.similarScroll}
+                  nestedScrollEnabled
+                >
+                  {similarMovies.map((sim) => {
+                    const simPoster = getMoviePosterUrl(sim.poster_path);
+                    const simRating = sim.vote_average
+                      ? Number(sim.vote_average).toFixed(1)
+                      : null;
+                    const simYear = (sim.release_date || '').split('-')[0];
+                    return (
+                      <View key={sim.id} style={styles.simCard}>
+                        <View style={styles.simPosterBox}>
+                          {simPoster ? (
+                            <Image
+                              source={{ uri: simPoster }}
+                              style={styles.simPoster}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.simPosterFallback}>
+                              <Icon name="film-outline" size={22} color={theme.colors.textMuted} />
+                            </View>
+                          )}
+
+                          {simRating && simRating !== '0.0' ? (
+                            <View style={styles.simRatingBadge}>
+                              <Icon name="star" size={8} color={theme.colors.accent} />
+                              <Text style={styles.simRatingText}>{simRating}</Text>
+                            </View>
+                          ) : null}
+
+                          {/* Botão rápido Já Assisti */}
+                          {onPressWatch && (
+                            <TouchableOpacity
+                              style={styles.simWatchBtn}
+                              onPress={() => onPressWatch(sim)}
+                              activeOpacity={0.8}
+                            >
+                              <Icon name="add" size={13} color="#FFF" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        <Text style={styles.simTitle} numberOfLines={2}>
+                          {sim.title}
+                        </Text>
+                        {simYear ? (
+                          <Text style={styles.simYear}>{simYear}</Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Loading semelhantes */}
+            {loadingDetails && similarMovies.length === 0 && (
+              <View style={styles.similarLoadingRow}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.similarLoadingText}>Buscando semelhantes...</Text>
               </View>
             )}
           </ScrollView>
@@ -631,5 +718,107 @@ const styles = StyleSheet.create({
   },
   watchlistActionBtnTextActive: {
     color: theme.colors.accent,
+  },
+
+  // ── Seção Semelhantes ──
+  similarSection: {
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.surfaceBorder,
+  },
+  similarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  similarTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  similarCount: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+  },
+  similarScroll: {
+    gap: 10,
+    paddingRight: theme.spacing.md,
+  },
+  simCard: {
+    width: 80,
+  },
+  simPosterBox: {
+    width: 80,
+    height: 120,
+    borderRadius: theme.borderRadius.sm,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    position: 'relative',
+  },
+  simPoster: { width: '100%', height: '100%' },
+  simPosterFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simRatingBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(11,12,18,0.85)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.xs,
+    gap: 2,
+  },
+  simRatingText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  simWatchBtn: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simTitle: {
+    color: theme.colors.text,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 5,
+    lineHeight: 13,
+  },
+  simYear: {
+    color: theme.colors.textMuted,
+    fontSize: 9,
+    marginTop: 2,
+  },
+  similarLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.surfaceBorder,
+  },
+  similarLoadingText: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
   },
 });
