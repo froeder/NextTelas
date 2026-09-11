@@ -225,3 +225,25 @@ export const getMovieDetails = async (movieId) => {
   return { data, error: null };
 };
 
+/**
+ * Busca filmes recomendados pela TMDb baseados em um filme específico
+ * Endpoint: /movie/{movie_id}/recommendations
+ * @param {number|string} movieId
+ * @param {number} page
+ * @returns {Promise<{results: Array, error: string|null}>}
+ */
+export const getMovieRecommendations = async (movieId, page = 1) => {
+  if (!movieId) return { results: [], error: 'ID do filme é obrigatório.' };
+
+  const { data, error } = await fetchTmdb(`/movie/${movieId}/recommendations`, { page });
+
+  if (error || !data) {
+    return { results: [], error };
+  }
+
+  return {
+    results: data.results || [],
+    total_pages: data.total_pages || 1,
+    error: null,
+  };
+};

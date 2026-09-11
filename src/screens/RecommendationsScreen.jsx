@@ -3,21 +3,268 @@ import {
   View,
   Text,
   ScrollView,
+  Image,
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { Loading } from '../components/Loading';
-import { MovieCard } from '../components/MovieCard';
-import { MovieCarousel } from '../components/MovieCarousel';
+import { MovieDetailsModal } from '../components/MovieDetailsModal';
 import { InsightBanner } from '../components/InsightBanner';
 import { extractTopGenres, filterAlreadyWatchedMovies } from '../utils/genreExtractor';
-import { discoverMoviesByGenres, getTrendingOrPopularMovies } from '../services/tmdbService';
+import {
+  getMovieRecommendations,
+  getTrendingOrPopularMovies,
+  getMoviePosterUrl,
+} from '../services/tmdbService';
+import { getGenreNames } from '../utils/tmdbGenres';
 import { addWatchedMovie } from '../services/firestoreService';
 
+// ─── Constantes de layout ───────────────────────────────────────────────────
+const POSTER_W = 100;
+const POSTER_H = 150;
+const MAX_SOURCE_MOVIES = 12; // quantos filmes-origem usamos
+const RECS_PER_MOVIE = 3;     // quantas recomendações por filme buscamos (pegamos a melhor)
+
+// ─── Componente interno: Card compacto para o carrossel ─────────────────────
+const RecCard = ({ movie, isWatched, onWatch, onOpenDetails }) => {
+  const [loading, setLoading] = useState(false);
+  const posterUri = getMoviePosterUrl(movie.poster_path);
+  const rating = movie.vote_average ? Number(movie.vote_average).toFixed(1) : null;
+  const primaryGenre = getGenreNames(movie.genre_ids || [])[0] || '';
+
+  const handleWatch = async (e) => {
+    e?.stopPropagation?.();
+    if (loading || isWatched) return;
+    setLoading(true);
+    try { await onWatch(movie); } finally { setLoading(false); }
+  };
+
+  return (
+    <TouchableOpacity style={recCardStyles.card} activeOpacity={0.88} onPress={() => onOpenDetails(movie)}>
+      <View style={recCardStyles.posterBox}>
+        {posterUri ? (
+          <Image source={{ uri: posterUri }} style={recCardStyles.poster} resizeMode="cover" />
+        ) : (
+          <View style={recCardStyles.posterFallback}>
+            <Icon name="film-outline" size={28} color={theme.colors.textMuted} />
+          </View>
+        )}
+
+        {rating && rating !== '0.0' ? (
+          <View style={recCardStyles.ratingBadge}>
+            <Icon name="star" size={9} color={theme.colors.accent} />
+            <Text style={recCardStyles.ratingText}>{rating}</Text>
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={[recCardStyles.watchBtn, isWatched && recCardStyles.watchBtnActive]}
+          onPress={handleWatch}
+          disabled={isWatched || loading}
+          activeOpacity={0.7}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Icon
+              name={isWatched ? 'checkmark' : 'add'}
+              size={15}
+              color={isWatched ? theme.colors.success : '#FFF'}
+            />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <Text style={recCardStyles.title} numberOfLines={1}>{movie.title}</Text>
+      {primaryGenre ? <Text style={recCardStyles.genre} numberOfLines={1}>{primaryGenre}</Text> : null}
+    </TouchableOpacity>
+  );
+};
+
+const recCardStyles = StyleSheet.create({
+  card: { width: POSTER_W, marginRight: 12 },
+  posterBox: {
+    width: POSTER_W,
+    height: POSTER_H,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    position: 'relative',
+  },
+  poster: { width: '100%', height: '100%' },
+  posterFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: 'rgba(11,12,18,0.85)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,184,0,0.4)',
+  },
+  ratingText: { color: '#FFF', fontSize: 10, fontWeight: '700', marginLeft: 3 },
+  watchBtn: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  watchBtnActive: {
+    backgroundColor: 'rgba(11,12,18,0.85)',
+    borderWidth: 1,
+    borderColor: theme.colors.success,
+  },
+  title: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+  genre: {
+    color: theme.colors.textSecondary,
+    fontSize: 10,
+    marginTop: 1,
+  },
+});
+
+// ─── Componente interno: Seção de recomendações de UM filme ─────────────────
+const SourceMovieSection = ({ sourceMovie, recommendations, isMovieWatched, onWatch, onOpenDetails }) => {
+  if (!recommendations || recommendations.length === 0) return null;
+
+  const sourcePoster = getMoviePosterUrl(sourceMovie.poster_path);
+  const sourceYear = (sourceMovie.release_date || '').split('-')[0];
+
+  return (
+    <View style={sectionStyles.container}>
+      {/* Cabeçalho com mini-poster do filme origem */}
+      <View style={sectionStyles.header}>
+        <View style={sectionStyles.sourcePosterBox}>
+          {sourcePoster ? (
+            <Image source={{ uri: sourcePoster }} style={sectionStyles.sourcePoster} resizeMode="cover" />
+          ) : (
+            <View style={sectionStyles.sourcePosterFallback}>
+              <Icon name="film-outline" size={14} color={theme.colors.textMuted} />
+            </View>
+          )}
+        </View>
+        <View style={sectionStyles.headerText}>
+          <Text style={sectionStyles.sourceLabel}>Porque você assistiu</Text>
+          <Text style={sectionStyles.sourceTitle} numberOfLines={1}>
+            {sourceMovie.title}
+            {sourceYear ? <Text style={sectionStyles.sourceYear}> · {sourceYear}</Text> : null}
+          </Text>
+        </View>
+        <View style={sectionStyles.countBadge}>
+          <Text style={sectionStyles.countBadgeText}>{recommendations.length}</Text>
+        </View>
+      </View>
+
+      {/* Carrossel das recomendações */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={sectionStyles.scrollContent}
+      >
+        {recommendations.map((movie) => (
+          <RecCard
+            key={movie.id}
+            movie={movie}
+            isWatched={isMovieWatched(movie.id)}
+            onWatch={onWatch}
+            onOpenDetails={onOpenDetails}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const sectionStyles = StyleSheet.create({
+  container: {
+    marginBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.surfaceBorder,
+    paddingBottom: theme.spacing.md,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: 10,
+    gap: 10,
+  },
+  sourcePosterBox: {
+    width: 36,
+    height: 54,
+    borderRadius: theme.borderRadius.xs,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    backgroundColor: theme.colors.surfaceLight,
+  },
+  sourcePoster: { width: '100%', height: '100%' },
+  sourcePosterFallback: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  headerText: { flex: 1 },
+  sourceLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  sourceTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '800',
+  },
+  sourceYear: {
+    color: theme.colors.textSecondary,
+    fontWeight: '400',
+  },
+  countBadge: {
+    backgroundColor: 'rgba(229,9,20,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(229,9,20,0.35)',
+    borderRadius: theme.borderRadius.round,
+    width: 26,
+    height: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countBadgeText: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.md,
+    paddingRight: theme.spacing.lg,
+  },
+});
+
+// ─── Tela Principal ─────────────────────────────────────────────────────────
 export const RecommendationsScreen = ({
   user,
   watchedMovies = [],
@@ -27,49 +274,76 @@ export const RecommendationsScreen = ({
   onNavigateToSearch,
   onAddWatched,
 }) => {
-  const [recommendedMovies, setRecommendedMovies] = useState([]);
+  // { movieId: [rec, rec, ...] }
+  const [recsBySource, setRecsBySource] = useState({});
+  // ordem dos filmes-origem para exibição
+  const [sourceOrder, setSourceOrder] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [topGenresInfo, setTopGenresInfo] = useState({ topGenreIds: [], topGenresDetails: [], totalWatched: 0 });
+  const [detailMovie, setDetailMovie] = useState(null);
 
   const activeListObj = customLists.find((l) => l.id === selectedListId);
   const activeListName = selectedListId === 'all' ? null : activeListObj?.name;
 
-  // Filtra filmes assistidos que pertencem à lista selecionada para geração de padrões
   const moviesForPattern = selectedListId === 'all'
     ? watchedMovies
     : watchedMovies.filter((m) => Array.isArray(m.listIds) && m.listIds.includes(selectedListId));
 
-  // Set com os IDs de todos os assistidos para conferência O(1)
   const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
   const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
 
-  // PASSO A (Leitura) + PASSO B (Padrões da Lista) + PASSO C (Descoberta) + PASSO D (Filtro)
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     try {
-      // Passo B: Extrai gêneros mais frequentes da lista selecionada
+      // Extrai padrões de gênero para o InsightBanner
       const patternResult = extractTopGenres(moviesForPattern, 3);
       setTopGenresInfo(patternResult);
 
-      let rawDiscoverList = [];
-
-      if (patternResult.topGenreIds.length > 0) {
-        // Passo C: Consulta TMDb com os gêneros da lista
-        const { results, error } = await discoverMoviesByGenres(patternResult.topGenreIds);
-        if (error) {
-          console.warn('Erro ao consultar /discover/movie:', error);
-        }
-        rawDiscoverList = results || [];
-      } else {
-        // Fallback: se a lista não tem filmes ou usuário não tem histórico
+      // Sem filmes: mostra fallback de populares como "seed"
+      if (moviesForPattern.length === 0) {
         const { results } = await getTrendingOrPopularMovies(1);
-        rawDiscoverList = results || [];
+        const filtered = filterAlreadyWatchedMovies(results || [], watchedMovies).slice(0, 6);
+        setSourceOrder(['__trending__']);
+        setRecsBySource({ '__trending__': filtered });
+        return;
       }
 
-      // Passo D: Filtra filmes já assistidos (de qualquer lista)
-      const filtered = filterAlreadyWatchedMovies(rawDiscoverList, watchedMovies);
-      setRecommendedMovies(filtered);
+      // Escolhe os filmes-origem: os mais recentemente adicionados (ou embaralhados para variar)
+      const sourceCandidates = [...moviesForPattern]
+        .sort((a, b) => {
+          // Prioriza filmes com nota alta para seed de melhor qualidade
+          return (b.vote_average || 0) - (a.vote_average || 0);
+        })
+        .slice(0, MAX_SOURCE_MOVIES);
+
+      // Busca recomendações em paralelo para todos os filmes-origem
+      const results = await Promise.allSettled(
+        sourceCandidates.map((src) => getMovieRecommendations(src.id, 1))
+      );
+
+      const newRecsBySource = {};
+      const newOrder = [];
+
+      results.forEach((result, idx) => {
+        const sourceMovie = sourceCandidates[idx];
+        if (result.status !== 'fulfilled') return;
+
+        const recs = result.value.results || [];
+        // Filtra já assistidos + duplicatas entre seções
+        const seen = new Set(Object.values(newRecsBySource).flat().map((m) => String(m.id)));
+        const fresh = recs
+          .filter((m) => !watchedIdsSet.has(String(m.id)) && !seen.has(String(m.id)))
+          .slice(0, RECS_PER_MOVIE);
+
+        if (fresh.length > 0) {
+          newRecsBySource[sourceMovie.id] = fresh;
+          newOrder.push(sourceMovie.id);
+        }
+      });
+
+      setRecsBySource(newRecsBySource);
+      setSourceOrder(newOrder);
     } catch (error) {
       console.error('Erro no fluxo de recomendações:', error);
     } finally {
@@ -78,7 +352,6 @@ export const RecommendationsScreen = ({
     }
   }, [moviesForPattern, watchedMovies]);
 
-  // Atualiza recomendações sempre que a lista de filmes ou a lista ativa mudar
   useEffect(() => {
     fetchRecommendations();
   }, [fetchRecommendations]);
@@ -91,7 +364,6 @@ export const RecommendationsScreen = ({
   const handleWatchMovie = async (movie) => {
     if (!user?.uid) return;
     if (onAddWatched) {
-      // Se estiver em uma lista customizada, adiciona já vinculando à lista!
       const targetList = selectedListId !== 'all' ? selectedListId : null;
       const res = await onAddWatched(movie, targetList);
       if (res && !res.success && res.error) {
@@ -113,179 +385,191 @@ export const RecommendationsScreen = ({
     }
   };
 
-  // Separa os primeiros 6 filmes para o carrossel e o restante para a lista vertical
-  const carouselItems = recommendedMovies.slice(0, 6);
-  const listItems = recommendedMovies.slice(6);
+  // Total de recomendações únicas encontradas
+  const totalRecs = Object.values(recsBySource).flat().length;
+  const hasTrending = sourceOrder[0] === '__trending__';
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor={theme.colors.primary}
-          colors={[theme.colors.primary]}
-        />
-      }
-    >
-      {/* Seletor de Listas para Recomendações Segmentadas */}
-      <View style={styles.listSelectorWrapper}>
-        <View style={styles.listSelectorHeader}>
-          <Text style={styles.listSelectorTitle}>Recomendações Baseadas Em:</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listSelectorScroll}
-        >
-          {/* Opção Geral */}
-          <TouchableOpacity
-            style={[
-              styles.selectorChip,
-              selectedListId === 'all' && styles.selectorChipActive,
-            ]}
-            onPress={() => onSelectRecommendationList && onSelectRecommendationList('all')}
-            activeOpacity={0.8}
+    <>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
+        {/* Seletor de Listas */}
+        <View style={styles.listSelectorWrapper}>
+          <View style={styles.listSelectorHeader}>
+            <Text style={styles.listSelectorTitle}>Recomendações Baseadas Em:</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listSelectorScroll}
           >
-            <Icon
-              name="sparkles"
-              size={13}
-              color={selectedListId === 'all' ? '#FFF' : theme.colors.textSecondary}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[
-                styles.selectorChipText,
-                selectedListId === 'all' && styles.selectorChipTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.selectorChip, selectedListId === 'all' && styles.selectorChipActive]}
+              onPress={() => onSelectRecommendationList && onSelectRecommendationList('all')}
+              activeOpacity={0.8}
             >
-              Geral ({watchedMovies.length})
-            </Text>
-          </TouchableOpacity>
+              <Icon
+                name="sparkles"
+                size={13}
+                color={selectedListId === 'all' ? '#FFF' : theme.colors.textSecondary}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.selectorChipText, selectedListId === 'all' && styles.selectorChipTextActive]}>
+                Geral ({watchedMovies.length})
+              </Text>
+            </TouchableOpacity>
 
-          {/* Listas Customizadas */}
-          {customLists.map((list) => {
-            const isActive = selectedListId === list.id;
-            const count = watchedMovies.filter(
-              (m) => Array.isArray(m.listIds) && m.listIds.includes(list.id)
-            ).length;
-
-            return (
-              <TouchableOpacity
-                key={list.id}
-                style={[
-                  styles.selectorChip,
-                  isActive && styles.selectorChipActive,
-                ]}
-                onPress={() => onSelectRecommendationList && onSelectRecommendationList(list.id)}
-                activeOpacity={0.8}
-              >
-                <Icon
-                  name={list.icon || 'film'}
-                  size={13}
-                  color={isActive ? '#FFF' : theme.colors.textSecondary}
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={[
-                    styles.selectorChipText,
-                    isActive && styles.selectorChipTextActive,
-                  ]}
+            {customLists.map((list) => {
+              const isActive = selectedListId === list.id;
+              const count = watchedMovies.filter(
+                (m) => Array.isArray(m.listIds) && m.listIds.includes(list.id)
+              ).length;
+              return (
+                <TouchableOpacity
+                  key={list.id}
+                  style={[styles.selectorChip, isActive && styles.selectorChipActive]}
+                  onPress={() => onSelectRecommendationList && onSelectRecommendationList(list.id)}
+                  activeOpacity={0.8}
                 >
-                  {list.name} ({count})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Banner Explicativo da Descoberta por Padrões */}
-      <InsightBanner
-        topGenresDetails={topGenresInfo.topGenresDetails}
-        totalWatched={topGenresInfo.totalWatched}
-        listName={activeListName}
-      />
-
-      {loading && !refreshing ? (
-        <Loading message={activeListName ? `Descobrindo filmes para "${activeListName}"...` : "Calculando padrões e descobrindo recomendações..."} />
-      ) : selectedListId !== 'all' && moviesForPattern.length === 0 ? (
-        /* Empty State: A lista customizada não tem filmes */
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyIconBg}>
-            <Icon name="film-outline" size={42} color={theme.colors.textMuted} />
-          </View>
-          <Text style={styles.emptyTitle}>Lista "{activeListName}" Vazia</Text>
-          <Text style={styles.emptyDescription}>
-            Adicione ou mova filmes que você já assistiu para a lista "{activeListName}" na aba Já Assisti para gerar recomendações exclusivas!
-          </Text>
+                  <Icon
+                    name={list.icon || 'film'}
+                    size={13}
+                    color={isActive ? '#FFF' : theme.colors.textSecondary}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[styles.selectorChipText, isActive && styles.selectorChipTextActive]}>
+                    {list.name} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
-      ) : watchedMovies.length === 0 ? (
-        /* Empty State Geral */
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyIconBg}>
-            <Icon name="sparkles" size={48} color={theme.colors.accent} />
-          </View>
-          <Text style={styles.emptyTitle}>Seu Perfil Está Vazio</Text>
-          <Text style={styles.emptyDescription}>
-            Para ativarmos a <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Descoberta por Padrões</Text>, marque alguns filmes que você já assistiu.
-          </Text>
 
-          <TouchableOpacity
-            style={styles.goToSearchButton}
-            onPress={onNavigateToSearch}
-            activeOpacity={0.8}
-          >
-            <Icon name="search" size={18} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.goToSearchButtonText}>Buscar e Marcar Filmes</Text>
-          </TouchableOpacity>
-        </View>
-      ) : recommendedMovies.length === 0 ? (
-        /* Nenhum filme encontrado após filtragem */
-        <View style={styles.emptyStateContainer}>
-          <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
-          <Text style={styles.emptyTitle}>Sem Novas Sugestões no Momento</Text>
-          <Text style={styles.emptyDescription}>
-            Você já assistiu a quase todos os títulos mais populares desses gêneros! Tente puxar a tela para atualizar.
-          </Text>
-        </View>
-      ) : (
-        /* Conteúdo de Recomendações */
-        <>
-          {/* Carrossel de Destaques Recomendados */}
-          {carouselItems.length > 0 && (
-            <MovieCarousel
-              title={activeListName ? `Destaques para "${activeListName}"` : "Destaques para Você"}
-              movies={carouselItems}
-              onPressWatch={handleWatchMovie}
-              isMovieWatched={isMovieWatched}
-            />
-          )}
+        {/* Banner de Gêneros */}
+        <InsightBanner
+          topGenresDetails={topGenresInfo.topGenresDetails}
+          totalWatched={topGenresInfo.totalWatched}
+          listName={activeListName}
+        />
 
-          {/* Lista Vertical de Mais Recomendações */}
-          {listItems.length > 0 && (
-            <View style={styles.verticalSection}>
-              <View style={styles.sectionHeader}>
-                <Icon name="film" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
-                <Text style={styles.sectionTitle}>
-                  {activeListName ? `Mais Títulos para "${activeListName}"` : 'Mais Títulos Compatíveis'}
-                </Text>
-              </View>
-
-              {listItems.map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  isWatched={isMovieWatched(movie.id)}
-                  onPressWatch={handleWatchMovie}
-                />
-              ))}
+        {/* Estados */}
+        {loading && !refreshing ? (
+          <Loading message={activeListName ? `Descobrindo filmes para "${activeListName}"...` : 'Buscando recomendações personalizadas...'} />
+        ) : selectedListId !== 'all' && moviesForPattern.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <View style={styles.emptyIconBg}>
+              <Icon name="film-outline" size={42} color={theme.colors.textMuted} />
             </View>
-          )}
-        </>
-      )}
-    </ScrollView>
+            <Text style={styles.emptyTitle}>Lista "{activeListName}" Vazia</Text>
+            <Text style={styles.emptyDescription}>
+              Adicione ou mova filmes que você já assistiu para a lista "{activeListName}" na aba Já Assisti para gerar recomendações exclusivas!
+            </Text>
+          </View>
+        ) : watchedMovies.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <View style={styles.emptyIconBg}>
+              <Icon name="sparkles" size={48} color={theme.colors.accent} />
+            </View>
+            <Text style={styles.emptyTitle}>Seu Perfil Está Vazio</Text>
+            <Text style={styles.emptyDescription}>
+              Para ativarmos a{' '}
+              <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Descoberta por Padrões</Text>
+              , marque alguns filmes que você já assistiu.
+            </Text>
+            <TouchableOpacity style={styles.goToSearchButton} onPress={onNavigateToSearch} activeOpacity={0.8}>
+              <Icon name="search" size={18} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.goToSearchButtonText}>Buscar e Marcar Filmes</Text>
+            </TouchableOpacity>
+          </View>
+        ) : totalRecs === 0 && !loading ? (
+          <View style={styles.emptyStateContainer}>
+            <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
+            <Text style={styles.emptyTitle}>Sem Novas Sugestões</Text>
+            <Text style={styles.emptyDescription}>
+              Você já assistiu a quase todos os títulos semelhantes! Puxe a tela para atualizar.
+            </Text>
+          </View>
+        ) : (
+          /* ── Conteúdo principal ── */
+          <View style={styles.sectionsWrapper}>
+            {/* Cabeçalho global */}
+            {!hasTrending && sourceOrder.length > 0 && (
+              <View style={styles.globalHeader}>
+                <View style={styles.globalHeaderLeft}>
+                  <Icon name="sparkles" size={16} color={theme.colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.globalHeaderTitle}>
+                    {activeListName ? `Para "${activeListName}"` : 'Para Você'}
+                  </Text>
+                </View>
+                <View style={styles.globalHeaderBadge}>
+                  <Text style={styles.globalHeaderBadgeText}>{totalRecs} sugestões</Text>
+                </View>
+              </View>
+            )}
+
+            {hasTrending ? (
+              /* Fallback trending quando não há histórico */
+              <View style={styles.trendingSection}>
+                <View style={styles.sectionHeader}>
+                  <Icon name="trending-up" size={18} color={theme.colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.sectionTitle}>Títulos em Alta para Começar</Text>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={sectionStyles.scrollContent}
+                >
+                  {(recsBySource['__trending__'] || []).map((movie) => (
+                    <RecCard
+                      key={movie.id}
+                      movie={movie}
+                      isWatched={isMovieWatched(movie.id)}
+                      onWatch={handleWatchMovie}
+                      onOpenDetails={setDetailMovie}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            ) : (
+              /* Uma seção por filme assistido */
+              sourceOrder.map((sourceId) => {
+                const sourceMovie = moviesForPattern.find((m) => String(m.id) === String(sourceId));
+                if (!sourceMovie) return null;
+                return (
+                  <SourceMovieSection
+                    key={sourceId}
+                    sourceMovie={sourceMovie}
+                    recommendations={recsBySource[sourceId] || []}
+                    isMovieWatched={isMovieWatched}
+                    onWatch={handleWatchMovie}
+                    onOpenDetails={setDetailMovie}
+                  />
+                );
+              })
+            )}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Modal de detalhes */}
+      <MovieDetailsModal
+        visible={!!detailMovie}
+        movie={detailMovie}
+        isWatched={detailMovie ? isMovieWatched(detailMovie.id) : false}
+        onClose={() => setDetailMovie(null)}
+        onPressWatch={handleWatchMovie}
+      />
+    </>
   );
 };
 
@@ -340,6 +624,57 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
   },
+  sectionsWrapper: {
+    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.sm,
+  },
+  globalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+    marginBottom: 4,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  globalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  globalHeaderTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.md,
+    fontWeight: '800',
+  },
+  globalHeaderBadge: {
+    backgroundColor: 'rgba(255,184,0,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,184,0,0.3)',
+    borderRadius: theme.borderRadius.round,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  globalHeaderBadgeText: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  trendingSection: {
+    paddingTop: theme.spacing.md,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.md,
+    fontWeight: '700',
+  },
   emptyStateContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -383,21 +718,6 @@ const styles = StyleSheet.create({
   goToSearchButtonText: {
     color: '#FFF',
     fontSize: theme.fontSize.sm,
-    fontWeight: '700',
-  },
-  verticalSection: {
-    marginTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  sectionTitle: {
-    color: theme.colors.text,
-    fontSize: theme.fontSize.md,
     fontWeight: '700',
   },
 });
