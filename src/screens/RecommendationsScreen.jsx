@@ -18,7 +18,7 @@ import { extractTopGenres, filterAlreadyWatchedMovies } from '../utils/genreExtr
 import { discoverMoviesByGenres, getTrendingOrPopularMovies } from '../services/tmdbService';
 import { addWatchedMovie } from '../services/firestoreService';
 
-export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSearch }) => {
+export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSearch, onAddWatched }) => {
   const [recommendedMovies, setRecommendedMovies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,9 +71,24 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
 
   const handleWatchMovie = async (movie) => {
     if (!user?.uid) return;
-    const { success, error } = await addWatchedMovie(user.uid, movie);
-    if (!success) {
-      Alert.alert('Erro ao salvar', error || 'Não foi possível registrar o filme.');
+    if (onAddWatched) {
+      const res = await onAddWatched(movie);
+      if (res && !res.success && res.error) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(res.error);
+        } else {
+          Alert.alert('Erro ao salvar', res.error);
+        }
+      }
+    } else {
+      const { success, error } = await addWatchedMovie(user.uid, movie);
+      if (!success) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(error || 'Não foi possível registrar o filme.');
+        } else {
+          Alert.alert('Erro ao salvar', error || 'Não foi possível registrar o filme.');
+        }
+      }
     }
   };
 

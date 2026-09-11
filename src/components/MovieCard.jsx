@@ -117,14 +117,18 @@ export const MovieCard = ({
               style={styles.removeButton}
               onPress={handleRemove}
               disabled={loadingAction}
+              activeOpacity={0.7}
             >
               {loadingAction ? (
-                <ActivityIndicator size="small" color={theme.colors.error} />
+                <View style={styles.btnContentRow}>
+                  <ActivityIndicator size="small" color={theme.colors.error} style={{ marginRight: 6 }} />
+                  <Text style={styles.removeButtonText}>Removendo...</Text>
+                </View>
               ) : (
-                <>
+                <View style={styles.btnContentRow}>
                   <Icon name="trash-outline" size={15} color={theme.colors.error} />
                   <Text style={styles.removeButtonText}>Remover</Text>
-                </>
+                </View>
               )}
             </TouchableOpacity>
           ) : (
@@ -138,12 +142,16 @@ export const MovieCard = ({
               activeOpacity={0.7}
             >
               {loadingAction ? (
-                <ActivityIndicator
-                  size="small"
-                  color={isWatched ? theme.colors.success : '#FFF'}
-                />
+                <View style={styles.btnContentRow}>
+                  <ActivityIndicator
+                    size="small"
+                    color="#FFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.watchButtonText}>Adicionando...</Text>
+                </View>
               ) : isWatched ? (
-                <>
+                <View style={styles.btnContentRow}>
                   <Icon
                     name="checkmark-circle"
                     size={16}
@@ -151,9 +159,9 @@ export const MovieCard = ({
                     style={{ marginRight: 5 }}
                   />
                   <Text style={styles.watchedButtonText}>Assistido</Text>
-                </>
+                </View>
               ) : (
-                <>
+                <View style={styles.btnContentRow}>
                   <Icon
                     name="add-circle-outline"
                     size={16}
@@ -161,7 +169,7 @@ export const MovieCard = ({
                     style={{ marginRight: 5 }}
                   />
                   <Text style={styles.watchButtonText}>Já Assisti</Text>
-                </>
+                </View>
               )}
             </TouchableOpacity>
           )}
@@ -266,6 +274,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
+  btnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   watchButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,6 +285,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: theme.borderRadius.sm,
+    minWidth: 105,
+    justifyContent: 'center',
   },
   watchButtonText: {
     color: '#FFF',
@@ -298,6 +312,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: theme.borderRadius.sm,
+    minWidth: 95,
+    justifyContent: 'center',
   },
   removeButtonText: {
     color: theme.colors.error,

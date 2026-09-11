@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
@@ -22,7 +23,21 @@ export const MovieCarousel = ({
   onPressWatch,
   isMovieWatched,
 }) => {
+  const [loadingMovieId, setLoadingMovieId] = useState(null);
+
   if (!movies || movies.length === 0) return null;
+
+  const handleWatch = async (item) => {
+    const isWatched = isMovieWatched ? isMovieWatched(item.id) : false;
+    if (isWatched || loadingMovieId || !onPressWatch) return;
+
+    try {
+      setLoadingMovieId(item.id);
+      await onPressWatch(item);
+    } finally {
+      setLoadingMovieId(null);
+    }
+  };
 
   const renderItem = ({ item }) => {
     const posterUri = item.poster_path
@@ -34,6 +49,7 @@ export const MovieCarousel = ({
       : null;
 
     const watched = isMovieWatched ? isMovieWatched(item.id) : false;
+    const isLoading = loadingMovieId === item.id;
     const primaryGenre = getGenreNames(item.genre_ids)[0] || '';
 
     return (
@@ -59,17 +75,25 @@ export const MovieCarousel = ({
             </View>
           ) : null}
 
-          {/* Botão Flutuante de Assistido */}
+          {/* Botão Flutuante de Assistido com Loading */}
           <TouchableOpacity
-            style={[styles.floatingWatchBtn, watched && styles.floatingWatchBtnActive]}
-            onPress={() => onPressWatch && onPressWatch(item)}
-            disabled={watched}
+            style={[
+              styles.floatingWatchBtn,
+              watched && styles.floatingWatchBtnActive,
+            ]}
+            onPress={() => handleWatch(item)}
+            disabled={watched || isLoading}
+            activeOpacity={0.7}
           >
-            <Icon
-              name={watched ? 'checkmark' : 'add'}
-              size={16}
-              color={watched ? theme.colors.success : '#FFF'}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Icon
+                name={watched ? 'checkmark' : 'add'}
+                size={16}
+                color={watched ? theme.colors.success : '#FFF'}
+              />
+            )}
           </TouchableOpacity>
         </View>
 

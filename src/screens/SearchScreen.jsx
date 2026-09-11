@@ -16,7 +16,7 @@ import { Loading } from '../components/Loading';
 import { searchMovies, getTrendingOrPopularMovies } from '../services/tmdbService';
 import { addWatchedMovie } from '../services/firestoreService';
 
-export const SearchScreen = ({ user, watchedMovies = [] }) => {
+export const SearchScreen = ({ user, watchedMovies = [], onAddWatched }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -141,13 +141,32 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
   // Ação ao clicar em 'Já Assisti'
   const handleWatchMovie = async (movie) => {
     if (!user || !user.uid) {
-      Alert.alert('Erro', 'Usuário não autenticado.');
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('Usuário não autenticado.');
+      } else {
+        Alert.alert('Erro', 'Usuário não autenticado.');
+      }
       return;
     }
 
-    const { success, error } = await addWatchedMovie(user.uid, movie);
-    if (!success) {
-      Alert.alert('Erro ao salvar', error || 'Não foi possível registrar o filme.');
+    if (onAddWatched) {
+      const res = await onAddWatched(movie);
+      if (res && !res.success && res.error) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(res.error);
+        } else {
+          Alert.alert('Erro ao salvar', res.error);
+        }
+      }
+    } else {
+      const { success, error } = await addWatchedMovie(user.uid, movie);
+      if (!success) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(error || 'Não foi possível registrar o filme.');
+        } else {
+          Alert.alert('Erro ao salvar', error || 'Não foi possível registrar o filme.');
+        }
+      }
     }
   };
 
