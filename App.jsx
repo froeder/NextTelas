@@ -106,7 +106,7 @@ export default function App() {
     });
 
     // 2. Persiste no Cloud Firestore
-    const res = await addWatchedMovie(user.uid, movie, listId);
+    const res = await addWatchedMovie(user.uid, movieData, listId);
     if (!res.success) {
       setWatchedMovies((prev) => prev.filter((m) => String(m.id) !== String(movie.id)));
     }

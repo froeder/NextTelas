@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,11 @@ import {
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { MovieCard } from '../components/MovieCard';
-import { removeWatchedMovie } from '../services/firestoreService';
+import { removeWatchedMovie, addWatchedMovie } from '../services/firestoreService';
 import { extractTopGenres } from '../utils/genreExtractor';
 import { CreateListModal } from '../components/CreateListModal';
 import { MoveToListModal } from '../components/MoveToListModal';
+import { getMovieDetails } from '../services/tmdbService';
 
 export const WatchedScreen = ({
   user,
@@ -57,9 +58,31 @@ export const WatchedScreen = ({
   // Estatísticas de gênero e total baseados na lista atualmente exibida
   const { topGenresDetails, totalWatched } = extractTopGenres(filteredMovies, 5);
 
-  // Cálculo do total de minutos assistidos
-  const moviesWithRuntime = filteredMovies.filter((m) => m.runtime > 0);
-  const totalMinutes = moviesWithRuntime.reduce((acc, m) => acc + (m.runtime || 0), 0);
+  // Auto-backfill em segundo plano para filmes sem runtime no Firestore
+  useEffect(() => {
+    if (!user?.uid || watchedMovies.length === 0) return;
+    const missing = watchedMovies.filter((m) => !m.runtime || Number(m.runtime) === 0);
+    if (missing.length === 0) return;
+
+    let isMounted = true;
+    const backfillRuntimes = async () => {
+      for (const m of missing.slice(0, 8)) {
+        try {
+          const { data } = await getMovieDetails(m.id);
+          if (isMounted && data?.runtime) {
+            await addWatchedMovie(user.uid, { ...m, runtime: data.runtime });
+          }
+        } catch (_) {}
+      }
+    };
+    backfillRuntimes();
+  }, [user, watchedMovies]);
+
+  // Cálculo do total de minutos assistidos (usa runtime exato ou estimativa média de 110 min)
+  const totalMinutes = filteredMovies.reduce((acc, m) => {
+    const r = Number(m.runtime);
+    return acc + (r > 0 ? r : 110);
+  }, 0);
   const totalHours = Math.floor(totalMinutes / 60);
   const remainingMinutes = totalMinutes % 60;
   const totalTimeLabel = totalMinutes > 0
