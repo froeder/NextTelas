@@ -12,6 +12,7 @@ import {
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { getGenreNames } from '../utils/tmdbGenres';
+import { MovieDetailsModal } from './MovieDetailsModal';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
@@ -24,6 +25,7 @@ export const MovieCarousel = ({
   isMovieWatched,
 }) => {
   const [loadingMovieId, setLoadingMovieId] = useState(null);
+  const [selectedMovie, setSelectedMovie] = useState(null);
 
   if (!movies || movies.length === 0) return null;
 
@@ -53,7 +55,11 @@ export const MovieCarousel = ({
     const primaryGenre = getGenreNames(item.genre_ids)[0] || '';
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.88}
+        onPress={() => setSelectedMovie(item)}
+      >
         <View style={styles.posterContainer}>
           {posterUri ? (
             <Image
@@ -81,7 +87,10 @@ export const MovieCarousel = ({
               styles.floatingWatchBtn,
               watched && styles.floatingWatchBtnActive,
             ]}
-            onPress={() => handleWatch(item)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              handleWatch(item);
+            }}
             disabled={watched || isLoading}
             activeOpacity={0.7}
           >
@@ -106,30 +115,41 @@ export const MovieCarousel = ({
             {primaryGenre}
           </Text>
         ) : null}
-      </View>
+      </TouchableOpacity>
     );
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Icon name="flame" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
-          <Text style={styles.sectionTitle}>{title}</Text>
+    <>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <Icon name="flame" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.sectionTitle}>{title}</Text>
+          </View>
+          <Text style={styles.countText}>{movies.length} títulos</Text>
         </View>
-        <Text style={styles.countText}>{movies.length} títulos</Text>
+
+        <FlatList
+          data={movies}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          decelerationRate="fast"
+        />
       </View>
 
-      <FlatList
-        data={movies}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        decelerationRate="fast"
+      {/* Modal de Detalhes do Filme */}
+      <MovieDetailsModal
+        visible={!!selectedMovie}
+        movie={selectedMovie}
+        isWatched={isMovieWatched && selectedMovie ? isMovieWatched(selectedMovie.id) : false}
+        onClose={() => setSelectedMovie(null)}
+        onPressWatch={onPressWatch}
       />
-    </View>
+    </>
   );
 };
 

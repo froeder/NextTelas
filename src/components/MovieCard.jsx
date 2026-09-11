@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { GenreBadge } from './GenreBadge';
 import { getGenreNames } from '../utils/tmdbGenres';
+import { getMovieDetails, formatRuntime } from '../services/tmdbService';
+import { MovieDetailsModal } from './MovieDetailsModal';
 
 export const MovieCard = ({
   movie,
@@ -20,6 +22,8 @@ export const MovieCard = ({
   showRemoveButton = false,
 }) => {
   const [loadingAction, setLoadingAction] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [runtimeText, setRuntimeText] = useState(formatRuntime(movie?.runtime));
 
   // Concatenação exigida para a capa do filme
   const posterUri = movie.poster_path
@@ -35,6 +39,23 @@ export const MovieCard = ({
     : null;
 
   const genreNames = getGenreNames(movie.genre_ids).slice(0, 3);
+
+  // Busca e exibe a duração do filme no card caso ainda não esteja disponível
+  useEffect(() => {
+    let isMounted = true;
+    if (!runtimeText && movie?.id) {
+      const fetchRuntime = async () => {
+        const { data } = await getMovieDetails(movie.id);
+        if (isMounted && data?.runtime) {
+          setRuntimeText(formatRuntime(data.runtime));
+        }
+      };
+      fetchRuntime();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [movie?.id, runtimeText]);
 
   const handleWatchToggle = async () => {
     if (loadingAction || isWatched) return;
@@ -57,125 +78,166 @@ export const MovieCard = ({
   };
 
   return (
-    <View style={styles.card}>
-      {/* Pôster com proporção cinematográfica */}
-      <View style={styles.posterContainer}>
-        {posterUri ? (
-          <Image
-            source={{ uri: posterUri }}
-            style={styles.poster}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.posterPlaceholder}>
-            <Icon name="film-outline" size={36} color={theme.colors.textMuted} />
-            <Text style={styles.placeholderText}>Sem Capa</Text>
-          </View>
-        )}
+    <>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.88}
+        onPress={() => setShowDetailsModal(true)}
+      >
+        {/* Pôster com proporção cinematográfica */}
+        <View style={styles.posterContainer}>
+          {posterUri ? (
+            <Image
+              source={{ uri: posterUri }}
+              style={styles.poster}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.posterPlaceholder}>
+              <Icon name="film-outline" size={36} color={theme.colors.textMuted} />
+              <Text style={styles.placeholderText}>Sem Capa</Text>
+            </View>
+          )}
 
-        {/* Badge de Nota Sobreposta */}
-        {rating && rating !== '0.0' ? (
-          <View style={styles.ratingBadge}>
-            <Icon name="star" size={11} color={theme.colors.accent} />
-            <Text style={styles.ratingText}>{rating}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Conteúdo e Informações do Filme */}
-      <View style={styles.detailsContainer}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.title} numberOfLines={2}>
-            {movie.title}
-          </Text>
-
-          {releaseYear ? (
-            <Text style={styles.year}>{releaseYear}</Text>
+          {/* Badge de Nota Sobreposta */}
+          {rating && rating !== '0.0' ? (
+            <View style={styles.ratingBadge}>
+              <Icon name="star" size={11} color={theme.colors.accent} />
+              <Text style={styles.ratingText}>{rating}</Text>
+            </View>
           ) : null}
         </View>
 
-        {/* Badges de Gênero */}
-        {genreNames.length > 0 ? (
-          <View style={styles.genresWrapper}>
-            {genreNames.map((name, index) => (
-              <GenreBadge key={index} name={name} size="xs" />
-            ))}
+        {/* Conteúdo e Informações do Filme */}
+        <View style={styles.detailsContainer}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.title} numberOfLines={2}>
+              {movie.title}
+            </Text>
+
+            {/* Linha com Ano e Duração do Filme */}
+            <View style={styles.metaRow}>
+              {releaseYear ? (
+                <Text style={styles.year}>{releaseYear}</Text>
+              ) : null}
+
+              {releaseYear && runtimeText ? (
+                <Text style={styles.metaDot}>•</Text>
+              ) : null}
+
+              {runtimeText ? (
+                <View style={styles.runtimeContainer}>
+                  <Icon name="clock" size={11} color={theme.colors.accent} style={{ marginRight: 3 }} />
+                  <Text style={styles.runtimeText}>{runtimeText}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
-        ) : null}
 
-        {/* Sinopse Curta (se disponível) */}
-        {movie.overview ? (
-          <Text style={styles.overview} numberOfLines={2}>
-            {movie.overview}
-          </Text>
-        ) : null}
+          {/* Badges de Gênero */}
+          {genreNames.length > 0 ? (
+            <View style={styles.genresWrapper}>
+              {genreNames.map((name, index) => (
+                <GenreBadge key={index} name={name} size="xs" />
+              ))}
+            </View>
+          ) : null}
 
-        {/* Ação: Botão 'Já Assisti' ou 'Remover' */}
-        <View style={styles.actionRow}>
-          {showRemoveButton ? (
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={handleRemove}
-              disabled={loadingAction}
-              activeOpacity={0.7}
-            >
-              {loadingAction ? (
-                <View style={styles.btnContentRow}>
-                  <ActivityIndicator size="small" color={theme.colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.removeButtonText}>Removendo...</Text>
-                </View>
-              ) : (
-                <View style={styles.btnContentRow}>
-                  <Icon name="trash-outline" size={15} color={theme.colors.error} />
-                  <Text style={styles.removeButtonText}>Remover</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.watchButton,
-                isWatched && styles.watchedButtonActive,
-              ]}
-              onPress={handleWatchToggle}
-              disabled={isWatched || loadingAction}
-              activeOpacity={0.7}
-            >
-              {loadingAction ? (
-                <View style={styles.btnContentRow}>
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFF"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={styles.watchButtonText}>Adicionando...</Text>
-                </View>
-              ) : isWatched ? (
-                <View style={styles.btnContentRow}>
-                  <Icon
-                    name="checkmark-circle"
-                    size={16}
-                    color={theme.colors.success}
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text style={styles.watchedButtonText}>Assistido</Text>
-                </View>
-              ) : (
-                <View style={styles.btnContentRow}>
-                  <Icon
-                    name="add-circle-outline"
-                    size={16}
-                    color="#FFF"
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text style={styles.watchButtonText}>Já Assisti</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
+          {/* Sinopse Curta com dica de clique */}
+          {movie.overview ? (
+            <Text style={styles.overview} numberOfLines={2}>
+              {movie.overview}
+            </Text>
+          ) : null}
+
+          {/* Ação: Botão 'Já Assisti' ou 'Remover' */}
+          <View style={styles.actionRow}>
+            {showRemoveButton ? (
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  handleRemove();
+                }}
+                disabled={loadingAction}
+                activeOpacity={0.7}
+              >
+                {loadingAction ? (
+                  <View style={styles.btnContentRow}>
+                    <ActivityIndicator size="small" color={theme.colors.error} style={{ marginRight: 6 }} />
+                    <Text style={styles.removeButtonText}>Removendo...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.btnContentRow}>
+                    <Icon name="trash-outline" size={15} color={theme.colors.error} />
+                    <Text style={styles.removeButtonText}>Remover</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.watchButton,
+                  isWatched && styles.watchedButtonActive,
+                ]}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  handleWatchToggle();
+                }}
+                disabled={isWatched || loadingAction}
+                activeOpacity={0.7}
+              >
+                {loadingAction ? (
+                  <View style={styles.btnContentRow}>
+                    <ActivityIndicator
+                      size="small"
+                      color="#FFF"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.watchButtonText}>Adicionando...</Text>
+                  </View>
+                ) : isWatched ? (
+                  <View style={styles.btnContentRow}>
+                    <Icon
+                      name="checkmark-circle"
+                      size={16}
+                      color={theme.colors.success}
+                      style={{ marginRight: 5 }}
+                    />
+                    <Text style={styles.watchedButtonText}>Assistido</Text>
+                  </View>
+                ) : (
+                  <View style={styles.btnContentRow}>
+                    <Icon
+                      name="add-circle-outline"
+                      size={16}
+                      color="#FFF"
+                      style={{ marginRight: 5 }}
+                    />
+                    <Text style={styles.watchButtonText}>Já Assisti</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.tapForMore}>
+              <Text style={styles.tapForMoreText}>Toque para detalhes</Text>
+            </View>
+          </View>
         </View>
-      </View>
-    </View>
+      </TouchableOpacity>
+
+      {/* Modal com Todas as Informações Detalhadas */}
+      <MovieDetailsModal
+        visible={showDetailsModal}
+        movie={movie}
+        isWatched={isWatched}
+        onClose={() => setShowDetailsModal(false)}
+        onPressWatch={onPressWatch}
+        onPressRemove={onPressRemove}
+        showRemoveButton={showRemoveButton}
+      />
+    </>
   );
 };
 
@@ -252,10 +314,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 20,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
   year: {
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.xs,
-    marginTop: 2,
+  },
+  metaDot: {
+    color: theme.colors.textMuted,
+    marginHorizontal: 5,
+    fontSize: 10,
+  },
+  runtimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 184, 0, 0.09)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.xs,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 184, 0, 0.25)',
+  },
+  runtimeText: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
   },
   genresWrapper: {
     flexDirection: 'row',
@@ -270,7 +356,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
   },
@@ -320,5 +406,13 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  tapForMore: {
+    paddingLeft: 4,
+  },
+  tapForMoreText: {
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    fontStyle: 'italic',
   },
 });

@@ -22,6 +22,11 @@ import {
   AlertCircle,
   Info,
   HelpCircle,
+  Clock,
+  Calendar,
+  Play,
+  X,
+  ExternalLink,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -31,6 +36,8 @@ const ICON_MAP = {
   'flame': Flame,
   'sparkles': Sparkles,
   'sparkles-outline': Sparkles,
+  'play': Play,
+  'play-circle': Play,
 
   // Navegação e Ações
   'search': Search,
@@ -43,6 +50,13 @@ const ICON_MAP = {
   'add': Plus,
   'add-circle-outline': PlusCircle,
   'close-circle': XCircle,
+  'close': X,
+  'external-link': ExternalLink,
+
+  // Detalhes do Filme & Tempo
+  'clock': Clock,
+  'time-outline': Clock,
+  'calendar': Calendar,
 
   // Autenticação & Usuário
   'mail-outline': Mail,

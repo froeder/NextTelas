@@ -27,6 +27,13 @@ export const TMDB_API_KEY = getTmdbKey();
 
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+export const TMDB_BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w780';
+
+export const getMovieBackdropUrl = (backdropPath) => {
+  if (!backdropPath) return null;
+  if (backdropPath.startsWith('http')) return backdropPath;
+  return `${TMDB_BACKDROP_BASE_URL}${backdropPath}`;
+};
 
 /**
  * Monta os headers e query params adequados para v3 (api_key) ou v4 (Bearer token)
@@ -175,3 +182,46 @@ export const getTrendingOrPopularMovies = async (page = 1) => {
     error: null,
   };
 };
+
+/**
+ * Converte minutos para o formato amigável cinematográfico (ex: 148 -> '2h 28m')
+ * @param {number} minutes
+ * @returns {string|null}
+ */
+export const formatRuntime = (minutes) => {
+  if (!minutes || minutes <= 0) return null;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  if (hours > 0 && remaining > 0) return `${hours}h ${remaining}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${remaining}m`;
+};
+
+// Cache em memória para os detalhes de filmes para resposta instantânea
+const movieDetailsCache = new Map();
+
+/**
+ * Consulta os detalhes completos de um filme (duração/runtime, sinopse detalhada, elenco e trailer)
+ * @param {number|string} movieId
+ * @returns {Promise<{data: object|null, error: string|null}>}
+ */
+export const getMovieDetails = async (movieId) => {
+  if (!movieId) return { data: null, error: 'ID do filme é obrigatório.' };
+
+  const idKey = String(movieId);
+  if (movieDetailsCache.has(idKey)) {
+    return { data: movieDetailsCache.get(idKey), error: null };
+  }
+
+  const { data, error } = await fetchTmdb(`/movie/${movieId}`, {
+    append_to_response: 'credits,videos',
+  });
+
+  if (error || !data) {
+    return { data: null, error };
+  }
+
+  movieDetailsCache.set(idKey, data);
+  return { data, error: null };
+};
+
