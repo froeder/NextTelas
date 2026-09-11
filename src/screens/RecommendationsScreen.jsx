@@ -28,7 +28,7 @@ import { addWatchedMovie } from '../services/firestoreService';
 const POSTER_W = 100;
 const POSTER_H = 150;
 const MAX_SOURCE_MOVIES = 12; // quantos filmes-origem usamos
-const RECS_PER_MOVIE = 3;     // quantas recomendações por filme buscamos (pegamos a melhor)
+const RECS_PER_MOVIE = 8;     // quantas recomendações por filme buscamos inicialmente
 
 // ─── Componente interno: Card compacto para o carrossel ─────────────────────
 const RecCard = ({ movie, isWatched, onWatch, onOpenDetails }) => {
