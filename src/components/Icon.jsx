@@ -27,6 +27,13 @@ import {
   Play,
   X,
   ExternalLink,
+  PieChart,
+  Award,
+  Trophy,
+  Tv,
+  Compass,
+  Activity,
+  Zap,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -38,6 +45,7 @@ const ICON_MAP = {
   'sparkles-outline': Sparkles,
   'play': Play,
   'play-circle': Play,
+  'tv': Tv,
 
   // Navegação e Ações
   'search': Search,
@@ -52,6 +60,7 @@ const ICON_MAP = {
   'close-circle': XCircle,
   'close': X,
   'external-link': ExternalLink,
+  'compass': Compass,
 
   // Detalhes do Filme & Tempo
   'clock': Clock,
@@ -71,6 +80,11 @@ const ICON_MAP = {
   'trending-up': TrendingUp,
   'alert-circle': AlertCircle,
   'information-circle': Info,
+  'pie-chart': PieChart,
+  'award': Award,
+  'trophy': Trophy,
+  'activity': Activity,
+  'zap': Zap,
 };
 
 export const Icon = ({ name, size = 20, color = '#FFFFFF', style = {} }) => {

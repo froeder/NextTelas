@@ -21,6 +21,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { RecommendationsScreen } from './src/screens/RecommendationsScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { WatchedScreen } from './src/screens/WatchedScreen';
+import { StatsScreen } from './src/screens/StatsScreen';
 import { getMovieDetails } from './src/services/tmdbService';
 import { pushTabHistory } from './src/utils/pwaHistory';
 
@@ -319,6 +320,16 @@ export default function App() {
             onNavigateToSearch={() => setActiveTab('search')}
             onNavigateToRecommendations={handleNavigateToRecommendationsForList}
             onRemoveWatched={handleRemoveWatched}
+          />
+        );
+      case 'stats':
+        return (
+          <StatsScreen
+            watchedMovies={watchedMovies}
+            watchlist={watchlist}
+            customLists={customLists}
+            onNavigateToSearch={() => setActiveTab('search')}
+            onNavigateToRecommendations={() => setActiveTab('recommendations')}
           />
         );
       default:

@@ -24,6 +24,12 @@ export const CustomTabBar = ({ activeTab, onSelectTab, watchedCount = 0 }) => {
       activeIcon: 'film',
       badge: watchedCount > 0 ? watchedCount : null,
     },
+    {
+      key: 'stats',
+      label: 'Estatísticas',
+      icon: 'analytics',
+      activeIcon: 'analytics',
+    },
   ];
 
   return (
