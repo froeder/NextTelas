@@ -54,6 +54,17 @@ export const WatchedScreen = ({
   // Estatísticas de gênero e total baseados na lista atualmente exibida
   const { topGenresDetails, totalWatched } = extractTopGenres(filteredMovies, 5);
 
+  // Cálculo do total de minutos assistidos
+  const moviesWithRuntime = filteredMovies.filter((m) => m.runtime > 0);
+  const totalMinutes = moviesWithRuntime.reduce((acc, m) => acc + (m.runtime || 0), 0);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  const totalTimeLabel = totalMinutes > 0
+    ? (totalHours > 0
+        ? (remainingMinutes > 0 ? `${totalHours}h ${remainingMinutes}m` : `${totalHours}h`)
+        : `${remainingMinutes}m`)
+    : null;
+
   // Controle de Seleção
   const toggleSelectMovie = (movie) => {
     setSelectedMovieIds((prev) => {
@@ -218,9 +229,18 @@ export const WatchedScreen = ({
           <Text style={styles.listHeaderTitle}>
             {activeListId === 'all' ? 'Histórico Geral de Assistidos' : activeListObj?.name}
           </Text>
-          <Text style={styles.listHeaderSubtitle}>
-            {filteredMovies.length} {filteredMovies.length === 1 ? 'filme' : 'filmes'}
-          </Text>
+          <View style={styles.listHeaderMetaRow}>
+            <Text style={styles.listHeaderSubtitle}>
+              {filteredMovies.length} {filteredMovies.length === 1 ? 'filme' : 'filmes'}
+            </Text>
+            {totalTimeLabel && (
+              <>
+                <Text style={styles.listHeaderMetaDot}>•</Text>
+                <Icon name="clock" size={11} color={theme.colors.accent} style={{ marginRight: 3 }} />
+                <Text style={styles.listHeaderTotalTime}>{totalTimeLabel} assistidas</Text>
+              </>
+            )}
+          </View>
         </View>
 
         <View style={styles.headerRightButtons}>
@@ -540,6 +560,23 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
+  },
+  listHeaderMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    flexWrap: 'wrap',
+    gap: 3,
+  },
+  listHeaderMetaDot: {
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    marginHorizontal: 2,
+  },
+  listHeaderTotalTime: {
+    color: theme.colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
   },
   headerRightButtons: {
     flexDirection: 'row',
