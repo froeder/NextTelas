@@ -1,0 +1,26 @@
+{
+  "name": "NextTelas",
+  "short_name": "NextTelas",
+  "description": "Descubra filmes por padrões. Rastreie o que você assistiu e receba recomendações personalizadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0C12",
+  "theme_color": "#0B0C12",
+  "orientation": "portrait",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/assets/favicon.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["entertainment", "lifestyle"]
+}
