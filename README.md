@@ -1,8 +1,8 @@
-# 🎬 CinePattern - Recomendação de Filmes por Descoberta de Padrões
+# 🎬 NextTelas - Recomendação de Filmes por Descoberta de Padrões
 
-Aplicativo mobile desenvolvido em **React Native com Expo**, integrado ao **Firebase (Authentication e Cloud Firestore)** e à **TMDb API (The Movie Database)**.
+Aplicativo mobile e web desenvolvido em **React Native for Web**, **Vite** e **Firebase (Authentication e Cloud Firestore)** com integração à **TMDb API (The Movie Database)**.
 
-A inteligência de recomendação é baseada na **"Descoberta por Padrões"**:
+A regra de negócio principal é baseada na **"Descoberta por Padrões"**:
 1. O usuário pesquisa filmes e marca os que **já assistiu**.
 2. Os filmes assistidos são salvos na subcoleção `users/{userId}/watched_movies` no Firestore.
 3. O algoritmo analisa a frequência dos gêneros (`genre_ids`) no histórico e identifica os 2 a 3 gêneros predominantes.
@@ -11,40 +11,44 @@ A inteligência de recomendação é baseada na **"Descoberta por Padrões"**:
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🚀 Como Executar e Testar no Navegador (Vite)
 
-### 1. Pré-requisitos
-- Node.js instalado (v18+)
-- Aplicativo **Expo Go** instalado no seu celular (Android ou iOS) ou um emulador configurado.
+### 1. Iniciar o Servidor de Desenvolvimento
+```bash
+npm run dev
+```
+O app abrirá no navegador em **`http://localhost:5173`** com interface cinematográfica responsiva (formato app mobile em desktop e tela cheia em celulares).
 
-### 2. Configurar as Chaves da TMDb e do Firebase
+### 2. Gerar o Build de Produção
+```bash
+npm run build
+```
+Gera os arquivos otimizados e minificados na pasta `dist/`.
 
-Crie um arquivo `.env` na raiz do projeto (ou copie do `.env.example`):
+### 3. Fazer Deploy no Firebase Hosting
+```bash
+npm run deploy
+```
+Executa o build de produção e publica diretamente no Firebase Hosting!
+
+---
+
+## 🔑 Configuração de Chaves (.env)
+
+Crie um arquivo `.env` na raiz do projeto (ou edite o `.env.example`):
 
 ```bash
 # TMDb API (https://www.themoviedb.org/settings/api)
-EXPO_PUBLIC_TMDB_API_KEY=sua_tmdb_api_key_ou_token
+VITE_TMDB_API_KEY=sua_tmdb_api_key_ou_token
 
 # Firebase (https://console.firebase.google.com/)
-EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=seu-app.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=seu-app-id
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=seu-app.appspot.com
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=nexttelas.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=NextTelas
+VITE_FIREBASE_STORAGE_BUCKET=nexttelas.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
 ```
-
-> **Dica:** Você também pode colar as credenciais diretamente em:
-> - TMDb: [src/services/tmdbService.js](src/services/tmdbService.js) (na constante `TMDB_API_KEY`)
-> - Firebase: [src/services/firebaseConfig.js](src/services/firebaseConfig.js) (no objeto `firebaseConfig`)
-
-### 3. Rodar o Aplicativo
-
-```bash
-npx expo start
-```
-
-Pressione `a` para Android, `i` para iOS ou escaneie o QR Code com o aplicativo Expo Go!
 
 ---
 
@@ -52,24 +56,30 @@ Pressione `a` para Android, `i` para iOS ou escaneie o QR Code com o aplicativo 
 
 ```
 NextTelas/
-├── App.js                         # Ponto de entrada com Auth, TabBar e Header
+├── App.jsx                        # Ponto de entrada com Auth, TabBar e Header
+├── index.html                     # HTML raiz com viewport mobile responsivo
+├── vite.config.js                 # Configuração do Vite com alias React Native Web
+├── firebase.json                  # Configuração de deploy do Firebase Hosting (dist)
+├── .firebaserc                    # Projeto Firebase padrão (NextTelas)
 ├── src/
+│   ├── main.jsx                   # Montagem React 19 no navegador
 │   ├── components/
-│   │   ├── CustomTabBar.js        # Navegação inferior customizada Dark Cinema
-│   │   ├── GenreBadge.js          # Tags e chips de gêneros
-│   │   ├── Header.js              # Cabeçalho com logo, usuário e botão de logout
-│   │   ├── InsightBanner.js       # Banner da Descoberta por Padrões
-│   │   ├── Loading.js             # Indicador de carregamento estilizado
-│   │   ├── MovieCard.js           # Card do filme com imagem concatenada e botão Já Assisti
-│   │   └── MovieCarousel.js       # Carrossel horizontal de destaques
+│   │   ├── CustomTabBar.jsx       # Navegação inferior customizada Dark Cinema
+│   │   ├── GenreBadge.jsx         # Tags e chips de gêneros
+│   │   ├── Header.jsx             # Cabeçalho com logo NextTelas, usuário e logout
+│   │   ├── Icon.jsx               # Ícones vetoriais SVG de alta performance (Lucide)
+│   │   ├── InsightBanner.jsx      # Banner explicativo da Descoberta por Padrões
+│   │   ├── Loading.jsx            # Indicador de carregamento estilizado
+│   │   ├── MovieCard.jsx          # Card do filme com imagem concatenada e botão Já Assisti
+│   │   └── MovieCarousel.jsx      # Carrossel horizontal de destaques
 │   ├── screens/
-│   │   ├── AuthScreen.js          # Login e Cadastro no Firebase Auth
-│   │   ├── RecommendationsScreen.js# Tela principal de Descoberta por Padrões
-│   │   ├── SearchScreen.js        # Busca de filmes na TMDb (/search/movie)
-│   │   └── WatchedScreen.js       # Histórico de assistidos com estatísticas
+│   │   ├── AuthScreen.jsx         # Login e Cadastro no Firebase Auth
+│   │   ├── RecommendationsScreen.jsx # Tela principal de Descoberta por Padrões
+│   │   ├── SearchScreen.jsx       # Busca de filmes na TMDb (/search/movie)
+│   │   └── WatchedScreen.jsx      # Histórico de assistidos com estatísticas
 │   ├── services/
-│   │   ├── authService.js         # Métodos de autenticação Firebase com erros em pt-BR
-│   │   ├── firebaseConfig.js      # Configuração e inicialização do Firebase com AsyncStorage
+│   │   ├── authService.js         # Autenticação Firebase com mensagens em pt-BR
+│   │   ├── firebaseConfig.js      # Configuração e inicialização web do Firebase
 │   │   ├── firestoreService.js    # CRUD de users/{userId}/watched_movies
 │   │   └── tmdbService.js         # Clientes de busca e descoberta da TMDb (language=pt-BR)
 │   └── utils/
@@ -80,9 +90,9 @@ NextTelas/
 
 ---
 
-## 🔒 Regras de Segurança do Firestore (Recomendado)
+## 🔒 Regras de Segurança do Firestore
 
-No Firebase Console > Firestore Database > Regras, utilize:
+No Firebase Console > Firestore Database > Regras:
 
 ```javascript
 rules_version = '2';

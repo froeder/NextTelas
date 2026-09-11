@@ -8,7 +8,7 @@ export const Header = ({ user }) => {
   const handleLogout = () => {
     Alert.alert(
       'Sair da Conta',
-      'Tem certeza que deseja sair do CinePattern?',
+      'Tem certeza que deseja sair do NextTelas?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -33,7 +33,7 @@ export const Header = ({ user }) => {
         </View>
         <View>
           <Text style={styles.brandName}>
-            Cine<Text style={styles.brandAccent}>Pattern</Text>
+            Next<Text style={styles.brandAccent}>Telas</Text>
           </Text>
           <Text style={styles.tagline}>Descoberta por Padrões</Text>
         </View>

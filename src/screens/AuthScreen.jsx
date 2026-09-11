@@ -80,7 +80,7 @@ export const AuthScreen = () => {
             <Icon name="film" size={36} color="#FFF" />
           </View>
           <Text style={styles.appName}>
-            Cine<Text style={styles.appAccent}>Pattern</Text>
+            Next<Text style={styles.appAccent}>Telas</Text>
           </Text>
           <Text style={styles.tagline}>
             Recomendações inteligentes baseadas nos seus padrões de cinema
@@ -195,7 +195,7 @@ export const AuthScreen = () => {
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
               <Text style={styles.submitButtonText}>
-                {isLogin ? 'Entrar no CinePattern' : 'Finalizar Cadastro'}
+                {isLogin ? 'Entrar no NextTelas' : 'Finalizar Cadastro'}
               </Text>
             )}
           </TouchableOpacity>

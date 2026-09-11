@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from './src/utils/theme';
 import { subscribeAuthState } from './src/services/authService';
 import { subscribeWatchedMovies } from './src/services/firestoreService';
@@ -46,22 +44,18 @@ export default function App() {
   // Carregamento inicial da sessão
   if (authLoading) {
     return (
-      <SafeAreaProvider>
-        <StatusBar style="light" backgroundColor={theme.colors.background} />
-        <Loading message="Iniciando CinePattern..." fullScreen />
-      </SafeAreaProvider>
+      <View style={styles.container}>
+        <Loading message="Iniciando NextTelas..." fullScreen />
+      </View>
     );
   }
 
   // Se não houver usuário autenticado, exibe a tela de Login/Cadastro
   if (!user) {
     return (
-      <SafeAreaProvider>
-        <StatusBar style="light" backgroundColor={theme.colors.background} />
-        <SafeAreaView style={styles.container}>
-          <AuthScreen />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <View style={styles.container}>
+        <AuthScreen />
+      </View>
     );
   }
 
@@ -103,25 +97,22 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor={theme.colors.background} />
-      <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Cabeçalho do App com perfil e logout */}
-        <Header user={user} />
+    <View style={styles.container}>
+      {/* Cabeçalho do App com perfil e logout */}
+      <Header user={user} />
 
-        {/* Conteúdo da Tela Ativa */}
-        <View style={styles.content}>
-          {renderScreen()}
-        </View>
+      {/* Conteúdo da Tela Ativa */}
+      <View style={styles.content}>
+        {renderScreen()}
+      </View>
 
-        {/* Barra de Navegação Inferior Customizada */}
-        <CustomTabBar
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
-          watchedCount={watchedMovies.length}
-        />
-      </SafeAreaView>
-    </SafeAreaProvider>
+      {/* Barra de Navegação Inferior Customizada */}
+      <CustomTabBar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        watchedCount={watchedMovies.length}
+      />
+    </View>
   );
 }
 
@@ -129,6 +120,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+    overflow: 'hidden',
   },
   content: {
     flex: 1,
