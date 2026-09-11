@@ -11,6 +11,7 @@ import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { logoutUser } from '../services/authService';
 import { registerModalHistory } from '../utils/pwaHistory';
+import versionData from '../version.json';
 
 export const Header = ({ user }) => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -47,9 +48,14 @@ export const Header = ({ user }) => {
             <Icon name="film" size={18} color="#FFF" />
           </View>
           <View>
-            <Text style={styles.brandName}>
-              Next<Text style={styles.brandAccent}>Telas</Text>
-            </Text>
+            <View style={styles.brandTitleRow}>
+              <Text style={styles.brandName}>
+                Next<Text style={styles.brandAccent}>Telas</Text>
+              </Text>
+              <View style={styles.versionBadge}>
+                <Text style={styles.versionBadgeText}>v{versionData.version}</Text>
+              </View>
+            </View>
             <Text style={styles.tagline}>Descoberta por Padrões</Text>
           </View>
         </View>
@@ -117,6 +123,14 @@ export const Header = ({ user }) => {
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Rodapé com detalhes da versão */}
+            <View style={styles.versionFooter}>
+              <Text style={styles.versionFooterText}>
+                NextTelas v{versionData.version} • Build #{versionData.buildNumber}
+              </Text>
+              <Text style={styles.versionDateText}>Atualizado em {versionData.buildTime}</Text>
+            </View>
           </View>
         </View>
       </Modal>
@@ -150,6 +164,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   brandName: {
     color: theme.colors.text,
     fontSize: theme.fontSize.lg,
@@ -158,6 +177,20 @@ const styles = StyleSheet.create({
   },
   brandAccent: {
     color: theme.colors.primary,
+  },
+  versionBadge: {
+    backgroundColor: 'rgba(229, 9, 20, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.35)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.xs,
+  },
+  versionBadgeText: {
+    color: theme.colors.primary,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   tagline: {
     color: theme.colors.textSecondary,
@@ -280,5 +313,23 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: theme.fontSize.sm,
     fontWeight: '700',
+  },
+  versionFooter: {
+    marginTop: theme.spacing.md,
+    alignItems: 'center',
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.surfaceBorder,
+    width: '100%',
+  },
+  versionFooterText: {
+    color: theme.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  versionDateText: {
+    color: theme.colors.textMuted,
+    fontSize: 9,
+    marginTop: 2,
   },
 });

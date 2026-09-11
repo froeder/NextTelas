@@ -1,6 +1,6 @@
 {
   "name": "nexttelas",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "index.js",
   "dependencies": {
@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/bump-version.js",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && npx -y firebase-tools deploy --only hosting,firestore:rules",
