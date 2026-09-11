@@ -112,7 +112,7 @@ export default function App() {
       vote_average: Number(movie.vote_average) || 0,
       release_date: movie.release_date || '',
       overview: movie.overview || '',
-      runtime,
+      runtime: runtime || 110,
       listIds: listId ? [listId] : (Array.isArray(movie.listIds) ? movie.listIds : []),
     };
 

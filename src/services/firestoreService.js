@@ -11,6 +11,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
+import { getMovieDetails } from './tmdbService';
 
 /**
  * Retorna a referência da subcoleção 'watched_movies' do usuário
@@ -42,6 +43,17 @@ export const addWatchedMovie = async (userId, movie, listId = null) => {
       throw new Error('Dados incompletos para salvar filme.');
     }
 
+    // Resolve o runtime se não fornecido no objeto movie
+    let runtime = Number(movie.runtime) || 0;
+    if (!runtime) {
+      try {
+        const { data } = await getMovieDetails(movie.id);
+        if (data?.runtime) {
+          runtime = Number(data.runtime);
+        }
+      } catch (_) {}
+    }
+
     const movieDocRef = doc(db, 'users', userId, 'watched_movies', String(movie.id));
 
     const movieData = {
@@ -54,7 +66,7 @@ export const addWatchedMovie = async (userId, movie, listId = null) => {
       vote_average: Number(movie.vote_average) || 0,
       release_date: movie.release_date || '',
       overview: movie.overview || '',
-      runtime: Number(movie.runtime) || 0,
+      runtime: runtime || 110,
       listIds: listId ? [listId] : (Array.isArray(movie.listIds) ? movie.listIds : []),
       watchedAt: serverTimestamp(),
     };
