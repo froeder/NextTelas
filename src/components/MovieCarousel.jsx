@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { getGenreNames } from '../utils/tmdbGenres';
 
@@ -47,14 +47,14 @@ export const MovieCarousel = ({
             />
           ) : (
             <View style={styles.posterPlaceholder}>
-              <Ionicons name="film-outline" size={32} color={theme.colors.textMuted} />
+              <Icon name="film-outline" size={32} color={theme.colors.textMuted} />
             </View>
           )}
 
           {/* Rating Badge */}
           {rating ? (
             <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={10} color={theme.colors.accent} />
+              <Icon name="star" size={10} color={theme.colors.accent} />
               <Text style={styles.ratingText}>{rating}</Text>
             </View>
           ) : null}
@@ -65,7 +65,7 @@ export const MovieCarousel = ({
             onPress={() => onPressWatch && onPressWatch(item)}
             disabled={watched}
           >
-            <Ionicons
+            <Icon
               name={watched ? 'checkmark' : 'add'}
               size={16}
               color={watched ? theme.colors.success : '#FFF'}
@@ -90,7 +90,7 @@ export const MovieCarousel = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="flame" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+          <Icon name="flame" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         <Text style={styles.countText}>{movies.length} títulos</Text>

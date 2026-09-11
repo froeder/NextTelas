@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { Loading } from '../components/Loading';
 import { MovieCard } from '../components/MovieCard';
@@ -105,7 +105,7 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
         /* Empty State: Usuário ainda não marcou nenhum filme */
         <View style={styles.emptyStateContainer}>
           <View style={styles.emptyIconBg}>
-            <Ionicons name="sparkles" size={48} color={theme.colors.accent} />
+            <Icon name="sparkles" size={48} color={theme.colors.accent} />
           </View>
           <Text style={styles.emptyTitle}>Seu Perfil Está Vazio</Text>
           <Text style={styles.emptyDescription}>
@@ -117,14 +117,14 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
             onPress={onNavigateToSearch}
             activeOpacity={0.8}
           >
-            <Ionicons name="search" size={18} color="#FFF" style={{ marginRight: 8 }} />
+            <Icon name="search" size={18} color="#FFF" style={{ marginRight: 8 }} />
             <Text style={styles.goToSearchButtonText}>Buscar e Marcar Filmes</Text>
           </TouchableOpacity>
         </View>
       ) : recommendedMovies.length === 0 ? (
         /* Nenhum filme encontrado após filtragem */
         <View style={styles.emptyStateContainer}>
-          <Ionicons name="film-outline" size={48} color={theme.colors.textMuted} />
+          <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
           <Text style={styles.emptyTitle}>Sem Novas Sugestões no Momento</Text>
           <Text style={styles.emptyDescription}>
             Você já assistiu a quase todos os títulos mais populares desses gêneros! Tente puxar a tela para atualizar ou adicionar filmes de outros estilos.
@@ -145,7 +145,7 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
           {/* Lista de Filmes Recomendados */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <Ionicons name="star" size={18} color={theme.colors.accent} style={{ marginRight: 6 }} />
+              <Icon name="star" size={18} color={theme.colors.accent} style={{ marginRight: 6 }} />
               <Text style={styles.sectionTitle}>Mais Descobertas para Você</Text>
             </View>
             <Text style={styles.sectionSubtitle}>

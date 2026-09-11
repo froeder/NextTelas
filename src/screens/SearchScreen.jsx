@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { MovieCard } from '../components/MovieCard';
 import { Loading } from '../components/Loading';
@@ -92,7 +92,7 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
       {/* Barra de Busca Cinematográfica */}
       <View style={styles.searchBarWrapper}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
+          <Icon name="search" size={20} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por título (ex: Interestelar, Batman)..."
@@ -110,7 +110,7 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
           />
           {query.length > 0 ? (
             <TouchableOpacity onPress={handleClear} style={styles.clearBtn}>
-              <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+              <Icon name="close-circle" size={18} color={theme.colors.textMuted} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -149,7 +149,7 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="film-outline" size={48} color={theme.colors.textMuted} />
+              <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
               <Text style={styles.emptyTitle}>Nenhum filme encontrado</Text>
               <Text style={styles.emptySubtitle}>
                 Tente buscar por outro termo ou confira a ortografia do título.
@@ -173,7 +173,7 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
           ListHeaderComponent={
             <View style={styles.popularHeader}>
               <View style={styles.popularTitleRow}>
-                <Ionicons name="trending-up" size={20} color={theme.colors.accent} style={{ marginRight: 6 }} />
+                <Icon name="trending-up" size={20} color={theme.colors.accent} style={{ marginRight: 6 }} />
                 <Text style={styles.popularTitle}>Títulos Populares para Começar</Text>
               </View>
               <Text style={styles.popularSubtitle}>

@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { GenreBadge } from './GenreBadge';
 import { getGenreNames } from '../utils/tmdbGenres';
@@ -68,7 +68,7 @@ export const MovieCard = ({
           />
         ) : (
           <View style={styles.posterPlaceholder}>
-            <Ionicons name="film-outline" size={36} color={theme.colors.textMuted} />
+            <Icon name="film-outline" size={36} color={theme.colors.textMuted} />
             <Text style={styles.placeholderText}>Sem Capa</Text>
           </View>
         )}
@@ -76,7 +76,7 @@ export const MovieCard = ({
         {/* Badge de Nota Sobreposta */}
         {rating && rating !== '0.0' ? (
           <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={11} color={theme.colors.accent} />
+            <Icon name="star" size={11} color={theme.colors.accent} />
             <Text style={styles.ratingText}>{rating}</Text>
           </View>
         ) : null}
@@ -122,7 +122,7 @@ export const MovieCard = ({
                 <ActivityIndicator size="small" color={theme.colors.error} />
               ) : (
                 <>
-                  <Ionicons name="trash-outline" size={15} color={theme.colors.error} />
+                  <Icon name="trash-outline" size={15} color={theme.colors.error} />
                   <Text style={styles.removeButtonText}>Remover</Text>
                 </>
               )}
@@ -144,7 +144,7 @@ export const MovieCard = ({
                 />
               ) : isWatched ? (
                 <>
-                  <Ionicons
+                  <Icon
                     name="checkmark-circle"
                     size={16}
                     color={theme.colors.success}
@@ -154,7 +154,7 @@ export const MovieCard = ({
                 </>
               ) : (
                 <>
-                  <Ionicons
+                  <Icon
                     name="add-circle-outline"
                     size={16}
                     color="#FFF"

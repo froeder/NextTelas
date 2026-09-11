@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 
 export const CustomTabBar = ({ activeTab, onSelectTab, watchedCount = 0 }) => {
@@ -38,9 +38,9 @@ export const CustomTabBar = ({ activeTab, onSelectTab, watchedCount = 0 }) => {
             activeOpacity={0.7}
           >
             <View style={styles.iconWrapper}>
-              <Ionicons
+              <Icon
                 name={isActive ? tab.activeIcon : tab.icon}
-                size={22}
+                size={20}
                 color={isActive ? theme.colors.primary : theme.colors.textMuted}
               />
               {tab.badge !== null && tab.badge !== undefined ? (

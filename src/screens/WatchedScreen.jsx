@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { MovieCard } from '../components/MovieCard';
 import { removeWatchedMovie } from '../services/firestoreService';
@@ -86,7 +86,7 @@ export const WatchedScreen = ({ user, watchedMovies = [], onNavigateToSearch }) 
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBg}>
-              <Ionicons name="film-outline" size={42} color={theme.colors.textMuted} />
+              <Icon name="film-outline" size={42} color={theme.colors.textMuted} />
             </View>
             <Text style={styles.emptyTitle}>Nenhum Filme Registrado</Text>
             <Text style={styles.emptyText}>
@@ -98,7 +98,7 @@ export const WatchedScreen = ({ user, watchedMovies = [], onNavigateToSearch }) 
               onPress={onNavigateToSearch}
               activeOpacity={0.8}
             >
-              <Ionicons name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
+              <Icon name="search" size={16} color="#FFF" style={{ marginRight: 6 }} />
               <Text style={styles.searchButtonText}>Buscar Filmes Agora</Text>
             </TouchableOpacity>
           </View>

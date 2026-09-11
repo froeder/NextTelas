@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { logoutUser } from '../services/authService';
 
@@ -29,7 +29,7 @@ export const Header = ({ user }) => {
     <View style={styles.container}>
       <View style={styles.brandRow}>
         <View style={styles.logoIconBg}>
-          <Ionicons name="film" size={18} color="#FFF" />
+          <Icon name="film" size={18} color="#FFF" />
         </View>
         <View>
           <Text style={styles.brandName}>
@@ -41,7 +41,7 @@ export const Header = ({ user }) => {
 
       <View style={styles.userActionsRow}>
         <View style={styles.userBadge}>
-          <Ionicons name="person-circle-outline" size={16} color={theme.colors.accent} />
+          <Icon name="person-circle-outline" size={16} color={theme.colors.accent} />
           <Text style={styles.userNameText} numberOfLines={1}>
             {username}
           </Text>
@@ -52,7 +52,7 @@ export const Header = ({ user }) => {
           onPress={handleLogout}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.textSecondary} />
+          <Icon name="log-out-outline" size={18} color={theme.colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>

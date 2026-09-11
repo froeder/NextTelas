@@ -10,7 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { loginUser, registerUser } from '../services/authService';
 import { isFirebaseConfigured } from '../services/firebaseConfig';
@@ -67,7 +67,7 @@ export const AuthScreen = () => {
         {/* Banner de Aviso caso o Firebase ainda use chaves de placeholder */}
         {!configured && (
           <View style={styles.configAlert}>
-            <Ionicons name="information-circle" size={20} color={theme.colors.accent} />
+            <Icon name="information-circle" size={20} color={theme.colors.accent} />
             <Text style={styles.configAlertText}>
               Configure suas credenciais do Firebase em <Text style={{ fontWeight: '700' }}>src/services/firebaseConfig.js</Text> ou no arquivo <Text style={{ fontWeight: '700' }}>.env</Text> para autenticar.
             </Text>
@@ -77,7 +77,7 @@ export const AuthScreen = () => {
         {/* Logo e Cabeçalho */}
         <View style={styles.header}>
           <View style={styles.logoBadge}>
-            <Ionicons name="film" size={40} color="#FFF" />
+            <Icon name="film" size={36} color="#FFF" />
           </View>
           <Text style={styles.appName}>
             Cine<Text style={styles.appAccent}>Pattern</Text>
@@ -119,7 +119,7 @@ export const AuthScreen = () => {
           {/* Mensagem de Erro */}
           {errorMessage ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
+              <Icon name="alert-circle" size={18} color={theme.colors.error} />
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           ) : null}
@@ -127,7 +127,7 @@ export const AuthScreen = () => {
           {/* Campo E-mail */}
           <Text style={styles.inputLabel}>E-mail</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
+            <Icon name="mail-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="seuemail@exemplo.com"
@@ -143,7 +143,7 @@ export const AuthScreen = () => {
           {/* Campo Senha */}
           <Text style={styles.inputLabel}>Senha</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
+            <Icon name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="••••••••"
@@ -157,7 +157,7 @@ export const AuthScreen = () => {
               onPress={() => setShowPassword(!showPassword)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons
+              <Icon
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
                 color={theme.colors.textMuted}
@@ -170,7 +170,7 @@ export const AuthScreen = () => {
             <>
               <Text style={styles.inputLabel}>Confirmar Senha</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
+                <Icon name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"

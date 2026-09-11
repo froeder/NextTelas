@@ -13,7 +13,17 @@
  * =====================================================================
  */
 
-export const TMDB_API_KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY || 'INSIRA_SEU_TMDB_TOKEN_OU_API_KEY_AQUI';
+const getTmdbKey = () => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_TMDB_API_KEY) {
+    return import.meta.env.VITE_TMDB_API_KEY;
+  }
+  if (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_TMDB_API_KEY) {
+    return process.env.EXPO_PUBLIC_TMDB_API_KEY;
+  }
+  return 'INSIRA_SEU_TMDB_TOKEN_OU_API_KEY_AQUI';
+};
+
+export const TMDB_API_KEY = getTmdbKey();
 
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';

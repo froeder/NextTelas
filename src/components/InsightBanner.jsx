@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 
 export const InsightBanner = ({ topGenresDetails = [], totalWatched = 0 }) => {
   if (!topGenresDetails || topGenresDetails.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="sparkles-outline" size={24} color={theme.colors.accent} />
+        <Icon name="sparkles-outline" size={24} color={theme.colors.accent} />
         <View style={styles.emptyTextContainer}>
           <Text style={styles.emptyTitle}>Descubra Novos Favoritos</Text>
           <Text style={styles.emptySubtitle}>
@@ -24,7 +24,7 @@ export const InsightBanner = ({ topGenresDetails = [], totalWatched = 0 }) => {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={styles.badgePattern}>
-          <Ionicons name="analytics" size={14} color="#FFF" style={{ marginRight: 4 }} />
+          <Icon name="analytics" size={14} color="#FFF" style={{ marginRight: 4 }} />
           <Text style={styles.badgePatternText}>DESCOBERTA POR PADRÕES</Text>
         </View>
         <Text style={styles.statCount}>

@@ -1,6 +1,7 @@
 {
   "name": "nexttelas",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -8,15 +9,26 @@
     "expo": "~57.0.21",
     "expo-status-bar": "~57.0.1",
     "firebase": "^12.19.0",
+    "lucide-react": "^1.44.0",
     "react": "19.2.3",
+    "react-dom": "^19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "~5.7.0"
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-web": "^0.21.2"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && npx -y firebase-tools deploy --only hosting",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
+  }
 }
