@@ -16,7 +16,7 @@ import { Loading } from '../components/Loading';
 import { searchMovies, getTrendingOrPopularMovies } from '../services/tmdbService';
 import { addWatchedMovie } from '../services/firestoreService';
 
-export const SearchScreen = ({ user, watchedMovies = [], onAddWatched }) => {
+export const SearchScreen = ({ user, watchedMovies = [], watchlist = [], onAddWatched, onAddToWatchlist, onRemoveFromWatchlist }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +30,8 @@ export const SearchScreen = ({ user, watchedMovies = [], onAddWatched }) => {
 
   // Set com os IDs dos filmes já assistidos para conferência instantânea O(1)
   const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
+  // Set com os IDs dos filmes na watchlist (Quero Assistir)
+  const watchlistIdsSet = new Set(watchlist.map((m) => String(m.id)));
 
   // Carrega filmes populares em alta como sugestões iniciais
   useEffect(() => {
@@ -234,7 +236,10 @@ export const SearchScreen = ({ user, watchedMovies = [], onAddWatched }) => {
             <MovieCard
               movie={item}
               isWatched={isMovieWatched(item.id)}
+              isOnWatchlist={watchlistIdsSet.has(String(item.id))}
               onPressWatch={handleWatchMovie}
+              onAddToWatchlist={onAddToWatchlist}
+              onRemoveFromWatchlist={onRemoveFromWatchlist}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -267,7 +272,10 @@ export const SearchScreen = ({ user, watchedMovies = [], onAddWatched }) => {
             <MovieCard
               movie={item}
               isWatched={isMovieWatched(item.id)}
+              isOnWatchlist={watchlistIdsSet.has(String(item.id))}
               onPressWatch={handleWatchMovie}
+              onAddToWatchlist={onAddToWatchlist}
+              onRemoveFromWatchlist={onRemoveFromWatchlist}
             />
           )}
           contentContainerStyle={styles.listContent}

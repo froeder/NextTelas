@@ -10,6 +10,9 @@ import {
   createCustomList,
   deleteCustomList,
   moveMoviesToList,
+  subscribeWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
 } from './src/services/firestoreService';
 import { Header } from './src/components/Header';
 import { CustomTabBar } from './src/components/CustomTabBar';
@@ -18,6 +21,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { RecommendationsScreen } from './src/screens/RecommendationsScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { WatchedScreen } from './src/screens/WatchedScreen';
+import { getMovieDetails } from './src/services/tmdbService';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -25,6 +29,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('recommendations');
   const [watchedMovies, setWatchedMovies] = useState([]);
   const [customLists, setCustomLists] = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
   const [selectedListIdForRecommendations, setSelectedListIdForRecommendations] = useState('all');
 
   // Escuta o estado de autenticação do Firebase
@@ -37,11 +42,12 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Quando o usuário estiver logado, escuta a subcoleção de filmes assistidos e listas customizadas
+  // Quando o usuário estiver logado, escuta a subcoleção de filmes assistidos, listas e watchlist
   useEffect(() => {
     if (!user?.uid) {
       setWatchedMovies([]);
       setCustomLists([]);
+      setWatchlist([]);
       return;
     }
 
@@ -53,15 +59,31 @@ export default function App() {
       setCustomLists(lists || []);
     });
 
+    const unsubWatchlist = subscribeWatchlist(user.uid, (items) => {
+      setWatchlist(items || []);
+    });
+
     return () => {
       unsubMovies();
       unsubLists();
+      unsubWatchlist();
     };
   }, [user]);
 
   // Adiciona filme aos assistidos com atualização otimista instantânea
   const handleAddWatched = async (movie, listId = null) => {
     if (!user?.uid || !movie?.id) return { success: false, error: 'Dados inválidos' };
+
+    // Resolve o runtime: usa o que já existe no objeto ou busca da TMDb
+    let runtime = Number(movie.runtime) || 0;
+    if (!runtime) {
+      try {
+        const { data } = await getMovieDetails(movie.id);
+        runtime = Number(data?.runtime) || 0;
+      } catch (_) {
+        runtime = 0;
+      }
+    }
 
     const movieData = {
       id: Number(movie.id),
@@ -73,6 +95,7 @@ export default function App() {
       vote_average: Number(movie.vote_average) || 0,
       release_date: movie.release_date || '',
       overview: movie.overview || '',
+      runtime,
       listIds: listId ? [listId] : (Array.isArray(movie.listIds) ? movie.listIds : []),
     };
 
@@ -174,6 +197,49 @@ export default function App() {
     return res;
   };
 
+  // Adiciona à Watchlist (Quero Assistir) com atualização otimista
+  const handleAddToWatchlist = async (movie) => {
+    if (!user?.uid || !movie?.id) return { success: false };
+
+    const movieData = {
+      id: Number(movie.id),
+      title: movie.title || movie.name || 'Sem título',
+      poster_path: movie.poster_path || null,
+      genre_ids: Array.isArray(movie.genre_ids)
+        ? movie.genre_ids
+        : (movie.genres ? movie.genres.map((g) => g.id) : []),
+      vote_average: Number(movie.vote_average) || 0,
+      release_date: movie.release_date || '',
+      overview: movie.overview || '',
+    };
+
+    // Atualização otimista
+    setWatchlist((prev) => {
+      if (prev.some((m) => String(m.id) === String(movie.id))) return prev;
+      return [movieData, ...prev];
+    });
+
+    const res = await addToWatchlist(user.uid, movie);
+    if (!res.success) {
+      setWatchlist((prev) => prev.filter((m) => String(m.id) !== String(movie.id)));
+    }
+    return res;
+  };
+
+  // Remove da Watchlist com atualização otimista
+  const handleRemoveFromWatchlist = async (movieId) => {
+    if (!user?.uid || !movieId) return { success: false };
+
+    const prev = watchlist.find((m) => String(m.id) === String(movieId));
+    setWatchlist((list) => list.filter((m) => String(m.id) !== String(movieId)));
+
+    const res = await removeFromWatchlist(user.uid, movieId);
+    if (!res.success && prev) {
+      setWatchlist((list) => [...list, prev]);
+    }
+    return res;
+  };
+
   // Atalho para ver recomendações de uma lista específica
   const handleNavigateToRecommendationsForList = (listId) => {
     setSelectedListIdForRecommendations(listId || 'all');
@@ -218,7 +284,10 @@ export default function App() {
           <SearchScreen
             user={user}
             watchedMovies={watchedMovies}
+            watchlist={watchlist}
             onAddWatched={handleAddWatched}
+            onAddToWatchlist={handleAddToWatchlist}
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
           />
         );
       case 'watched':

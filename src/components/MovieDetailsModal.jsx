@@ -25,9 +25,12 @@ export const MovieDetailsModal = ({
   visible,
   movie,
   isWatched = false,
+  isOnWatchlist = false,
   onClose,
   onPressWatch,
   onPressRemove,
+  onAddToWatchlist,
+  onRemoveFromWatchlist,
   showRemoveButton = false,
 }) => {
   const [details, setDetails] = useState(null);
@@ -106,6 +109,20 @@ export const MovieDetailsModal = ({
       setLoadingAction(true);
       await onPressRemove(movie);
       onClose();
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleWatchlistToggle = async () => {
+    if (loadingAction) return;
+    try {
+      setLoadingAction(true);
+      if (isOnWatchlist) {
+        if (onRemoveFromWatchlist) await onRemoveFromWatchlist(movie.id);
+      } else {
+        if (onAddToWatchlist) await onAddToWatchlist(movie);
+      }
     } finally {
       setLoadingAction(false);
     }
@@ -275,34 +292,64 @@ export const MovieDetailsModal = ({
                 )}
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={[
-                  styles.watchActionBtn,
-                  isWatched && styles.watchActionBtnActive,
-                ]}
-                onPress={handleWatchToggle}
-                disabled={isWatched || loadingAction}
-                activeOpacity={0.8}
-              >
-                {loadingAction ? (
-                  <View style={styles.actionContentRow}>
-                    <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.watchActionBtnText}>Adicionando...</Text>
-                  </View>
-                ) : isWatched ? (
-                  <View style={styles.actionContentRow}>
-                    <Icon name="checkmark-circle" size={18} color={theme.colors.success} style={{ marginRight: 8 }} />
-                    <Text style={[styles.watchActionBtnText, { color: theme.colors.success }]}>
-                      Filme Já Assistido
+              <View style={styles.footerBtnRow}>
+                {/* Botão principal: Já Assisti / Assistido */}
+                <TouchableOpacity
+                  style={[
+                    styles.watchActionBtn,
+                    isWatched && styles.watchActionBtnActive,
+                  ]}
+                  onPress={handleWatchToggle}
+                  disabled={isWatched || loadingAction}
+                  activeOpacity={0.8}
+                >
+                  {loadingAction ? (
+                    <View style={styles.actionContentRow}>
+                      <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.watchActionBtnText}>Adicionando...</Text>
+                    </View>
+                  ) : isWatched ? (
+                    <View style={styles.actionContentRow}>
+                      <Icon name="checkmark-circle" size={18} color={theme.colors.success} style={{ marginRight: 8 }} />
+                      <Text style={[styles.watchActionBtnText, { color: theme.colors.success }]}>
+                        Filme Já Assistido
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.actionContentRow}>
+                      <Icon name="add-circle-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.watchActionBtnText}>Já Assisti</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Botão Quero Assistir (somente quando não assistiu ainda) */}
+                {!isWatched && (onAddToWatchlist || onRemoveFromWatchlist) && (
+                  <TouchableOpacity
+                    style={[
+                      styles.watchlistActionBtn,
+                      isOnWatchlist && styles.watchlistActionBtnActive,
+                    ]}
+                    onPress={handleWatchlistToggle}
+                    disabled={loadingAction}
+                    activeOpacity={0.8}
+                  >
+                    <Icon
+                      name={isOnWatchlist ? 'bookmark' : 'bookmark-outline'}
+                      size={18}
+                      color={isOnWatchlist ? theme.colors.accent : theme.colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.watchlistActionBtnText,
+                        isOnWatchlist && styles.watchlistActionBtnTextActive,
+                      ]}
+                    >
+                      {isOnWatchlist ? 'Na Lista' : 'Quero Assistir'}
                     </Text>
-                  </View>
-                ) : (
-                  <View style={styles.actionContentRow}>
-                    <Icon name="add-circle-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.watchActionBtnText}>Marcar como Já Assisti</Text>
-                  </View>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -522,6 +569,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: theme.colors.surfaceBorder,
   },
+  footerBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   actionContentRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -555,5 +607,29 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: theme.fontSize.sm,
     fontWeight: '700',
+  },
+  watchlistActionBtn: {
+    height: 48,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: 'rgba(255, 184, 0, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 184, 0, 0.25)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+  },
+  watchlistActionBtnActive: {
+    backgroundColor: 'rgba(255, 184, 0, 0.18)',
+    borderColor: 'rgba(255, 184, 0, 0.55)',
+  },
+  watchlistActionBtnText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
+  },
+  watchlistActionBtnTextActive: {
+    color: theme.colors.accent,
   },
 });

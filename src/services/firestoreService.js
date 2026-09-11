@@ -54,6 +54,7 @@ export const addWatchedMovie = async (userId, movie, listId = null) => {
       vote_average: Number(movie.vote_average) || 0,
       release_date: movie.release_date || '',
       overview: movie.overview || '',
+      runtime: Number(movie.runtime) || 0,
       listIds: listId ? [listId] : (Array.isArray(movie.listIds) ? movie.listIds : []),
       watchedAt: serverTimestamp(),
     };
@@ -244,6 +245,88 @@ export const subscribeWatchedMovies = (userId, onUpdate) => {
     },
     (error) => {
       console.error('Erro no listener de filmes assistidos:', error);
+      onUpdate([]);
+    }
+  );
+};
+
+// ─── Watchlist (Quero Assistir) ────────────────────────────────────────────
+
+/**
+ * Retorna a referência da subcoleção 'watchlist' do usuário
+ * Estrutura: users/{userId}/watchlist
+ */
+export const getWatchlistRef = (userId) => {
+  if (!userId) throw new Error('UserId é obrigatório para acessar o Firestore.');
+  return collection(db, 'users', userId, 'watchlist');
+};
+
+/**
+ * Adiciona um filme à watchlist (Quero Assistir) do usuário
+ * @param {string} userId
+ * @param {object} movie - Dados do filme da TMDb
+ */
+export const addToWatchlist = async (userId, movie) => {
+  try {
+    if (!userId || !movie?.id) throw new Error('Dados incompletos para salvar na watchlist.');
+
+    const docRef = doc(db, 'users', userId, 'watchlist', String(movie.id));
+    const data = {
+      id: Number(movie.id),
+      title: movie.title || movie.name || 'Sem título',
+      poster_path: movie.poster_path || null,
+      genre_ids: Array.isArray(movie.genre_ids)
+        ? movie.genre_ids
+        : (movie.genres ? movie.genres.map((g) => g.id) : []),
+      vote_average: Number(movie.vote_average) || 0,
+      release_date: movie.release_date || '',
+      overview: movie.overview || '',
+      addedAt: serverTimestamp(),
+    };
+
+    await setDoc(docRef, data, { merge: true });
+    return { success: true, data };
+  } catch (error) {
+    console.error('Erro ao adicionar à watchlist:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Remove um filme da watchlist do usuário
+ * @param {string} userId
+ * @param {number|string} movieId
+ */
+export const removeFromWatchlist = async (userId, movieId) => {
+  try {
+    const docRef = doc(db, 'users', userId, 'watchlist', String(movieId));
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao remover da watchlist:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Escuta em tempo real a watchlist do usuário
+ * @param {string} userId
+ * @param {function} onUpdate
+ * @returns {function} unsubscribe
+ */
+export const subscribeWatchlist = (userId, onUpdate) => {
+  if (!userId) return () => {};
+
+  const watchlistRef = getWatchlistRef(userId);
+  return onSnapshot(
+    query(watchlistRef, orderBy('addedAt', 'desc')),
+    (snapshot) => {
+      const movies = [];
+      snapshot.forEach((docSnap) => movies.push(docSnap.data()));
+      onUpdate(movies);
+    },
+    (error) => {
+      console.warn('Listener da watchlist:', error);
       onUpdate([]);
     }
   );

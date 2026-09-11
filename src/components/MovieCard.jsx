@@ -17,8 +17,11 @@ import { MovieDetailsModal } from './MovieDetailsModal';
 export const MovieCard = ({
   movie,
   isWatched = false,
+  isOnWatchlist = false,
   onPressWatch,
   onPressRemove,
+  onAddToWatchlist,
+  onRemoveFromWatchlist,
   showRemoveButton = false,
   isSelectable = false,
   isSelected = false,
@@ -85,6 +88,20 @@ export const MovieCard = ({
     try {
       setLoadingAction(true);
       await onPressRemove(movie);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleWatchlistToggle = async () => {
+    if (loadingAction) return;
+    try {
+      setLoadingAction(true);
+      if (isOnWatchlist) {
+        if (onRemoveFromWatchlist) await onRemoveFromWatchlist(movie.id);
+      } else {
+        if (onAddToWatchlist) await onAddToWatchlist(movie);
+      }
     } finally {
       setLoadingAction(false);
     }
@@ -220,49 +237,83 @@ export const MovieCard = ({
                 )}
               </View>
             ) : (
-              <TouchableOpacity
-                style={[
-                  styles.watchButton,
-                  isWatched && styles.watchedButtonActive,
-                ]}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  handleWatchToggle();
-                }}
-                disabled={isWatched || loadingAction}
-                activeOpacity={0.7}
-              >
-                {loadingAction ? (
-                  <View style={styles.btnContentRow}>
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFF"
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.watchButtonText}>Adicionando...</Text>
-                  </View>
-                ) : isWatched ? (
-                  <View style={styles.btnContentRow}>
+              <View style={styles.mainActionRow}>
+                {/* Botão Já Assisti */}
+                <TouchableOpacity
+                  style={[
+                    styles.watchButton,
+                    isWatched && styles.watchedButtonActive,
+                  ]}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    handleWatchToggle();
+                  }}
+                  disabled={isWatched || loadingAction}
+                  activeOpacity={0.7}
+                >
+                  {loadingAction ? (
+                    <View style={styles.btnContentRow}>
+                      <ActivityIndicator
+                        size="small"
+                        color="#FFF"
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={styles.watchButtonText}>Adicionando...</Text>
+                    </View>
+                  ) : isWatched ? (
+                    <View style={styles.btnContentRow}>
+                      <Icon
+                        name="checkmark-circle"
+                        size={16}
+                        color={theme.colors.success}
+                        style={{ marginRight: 5 }}
+                      />
+                      <Text style={styles.watchedButtonText}>Assistido</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.btnContentRow}>
+                      <Icon
+                        name="add-circle-outline"
+                        size={16}
+                        color="#FFF"
+                        style={{ marginRight: 5 }}
+                      />
+                      <Text style={styles.watchButtonText}>Já Assisti</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Botão Quero Assistir (ocultado se já assistiu) */}
+                {!isWatched && (onAddToWatchlist || onRemoveFromWatchlist) && (
+                  <TouchableOpacity
+                    style={[
+                      styles.watchlistButton,
+                      isOnWatchlist && styles.watchlistButtonActive,
+                    ]}
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      handleWatchlistToggle();
+                    }}
+                    disabled={loadingAction}
+                    activeOpacity={0.7}
+                  >
                     <Icon
-                      name="checkmark-circle"
-                      size={16}
-                      color={theme.colors.success}
-                      style={{ marginRight: 5 }}
+                      name={isOnWatchlist ? 'bookmark' : 'bookmark-outline'}
+                      size={15}
+                      color={isOnWatchlist ? theme.colors.accent : theme.colors.textSecondary}
+                      style={{ marginRight: 4 }}
                     />
-                    <Text style={styles.watchedButtonText}>Assistido</Text>
-                  </View>
-                ) : (
-                  <View style={styles.btnContentRow}>
-                    <Icon
-                      name="add-circle-outline"
-                      size={16}
-                      color="#FFF"
-                      style={{ marginRight: 5 }}
-                    />
-                    <Text style={styles.watchButtonText}>Já Assisti</Text>
-                  </View>
+                    <Text
+                      style={[
+                        styles.watchlistButtonText,
+                        isOnWatchlist && styles.watchlistButtonTextActive,
+                      ]}
+                    >
+                      {isOnWatchlist ? 'Na Lista' : 'Quero Assistir'}
+                    </Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             )}
 
             {!isSelectable && (
@@ -279,9 +330,12 @@ export const MovieCard = ({
         visible={showDetailsModal}
         movie={movie}
         isWatched={isWatched}
+        isOnWatchlist={isOnWatchlist}
         onClose={() => setShowDetailsModal(false)}
         onPressWatch={onPressWatch}
         onPressRemove={onPressRemove}
+        onAddToWatchlist={onAddToWatchlist}
+        onRemoveFromWatchlist={onRemoveFromWatchlist}
         showRemoveButton={showRemoveButton}
       />
     </>
@@ -443,6 +497,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
+    gap: 6,
+  },
+  mainActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
   },
   btnContentRow: {
     flexDirection: 'row',
@@ -452,10 +513,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: theme.borderRadius.sm,
-    minWidth: 105,
     justifyContent: 'center',
   },
   watchButtonText: {
@@ -514,5 +574,28 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 10,
     fontStyle: 'italic',
+  },
+  watchlistButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 184, 0, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 184, 0, 0.2)',
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.sm,
+    justifyContent: 'center',
+  },
+  watchlistButtonActive: {
+    backgroundColor: 'rgba(255, 184, 0, 0.18)',
+    borderColor: 'rgba(255, 184, 0, 0.5)',
+  },
+  watchlistButtonText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '700',
+  },
+  watchlistButtonTextActive: {
+    color: theme.colors.accent,
   },
 });
