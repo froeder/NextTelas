@@ -16,7 +16,26 @@ import { extractTopGenres } from '../utils/genreExtractor';
 export const WatchedScreen = ({ user, watchedMovies = [], onNavigateToSearch }) => {
   const { topGenresDetails, totalWatched } = extractTopGenres(watchedMovies, 5);
 
-  const handleRemoveMovie = (movie) => {
+  const handleRemoveMovie = async (movie) => {
+    const doRemove = async () => {
+      if (!user?.uid) return;
+      const { success, error } = await removeWatchedMovie(user.uid, movie.id);
+      if (!success) {
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(error || 'Não foi possível remover o filme.');
+        } else {
+          Alert.alert('Erro', error || 'Não foi possível remover o filme.');
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (window.confirm(`Deseja remover "${movie.title}" do seu histórico de assistidos?`)) {
+        await doRemove();
+      }
+      return;
+    }
+
     Alert.alert(
       'Remover Filme',
       `Deseja remover "${movie.title}" do seu histórico de assistidos?`,
@@ -25,13 +44,7 @@ export const WatchedScreen = ({ user, watchedMovies = [], onNavigateToSearch }) 
         {
           text: 'Remover',
           style: 'destructive',
-          onPress: async () => {
-            if (!user?.uid) return;
-            const { success, error } = await removeWatchedMovie(user.uid, movie.id);
-            if (!success) {
-              Alert.alert('Erro', error || 'Não foi possível remover o filme.');
-            }
-          },
+          onPress: doRemove,
         },
       ]
     );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
@@ -22,6 +23,10 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
   const [searched, setSearched] = useState(false);
   const [popularMovies, setPopularMovies] = useState([]);
   const [loadingPopular, setLoadingPopular] = useState(true);
+  const [searchError, setSearchError] = useState(null);
+
+  const debounceTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   // Set com os IDs dos filmes já assistidos para conferência instantânea O(1)
   const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
@@ -44,27 +49,94 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
     };
   }, []);
 
-  // Executa a busca na TMDb (/search/movie com language=pt-BR)
-  const handleSearch = useCallback(async (textToSearch) => {
-    const term = textToSearch !== undefined ? textToSearch : query;
-    if (!term || term.trim().length === 0) {
+  // Executa a busca na TMDb com proteção contra concorrência/respostas antigas
+  const performSearch = useCallback(async (termToSearch) => {
+    const term = (termToSearch !== undefined ? termToSearch : query).trim();
+    if (!term) {
       setResults([]);
       setSearched(false);
+      setLoading(false);
+      setSearchError(null);
       return;
     }
 
     setLoading(true);
     setSearched(true);
+    setSearchError(null);
+
+    const currentReqId = ++requestIdRef.current;
     try {
-      const { results: movies, error } = await searchMovies(term.trim());
-      if (error) {
-        Alert.alert('Aviso TMDb', 'Não foi possível buscar filmes. Verifique se a sua TMDb API Key está configurada.');
+      const { results: movies, error } = await searchMovies(term);
+      // Descarta a resposta caso o usuário já tenha digitado outro termo posteriormente
+      if (currentReqId === requestIdRef.current) {
+        if (error) {
+          setSearchError('Não foi possível buscar filmes. Verifique se a TMDb API Key está configurada no .env.');
+          setResults([]);
+        } else {
+          setSearchError(null);
+          setResults(movies || []);
+        }
       }
-      setResults(movies || []);
+    } catch (err) {
+      if (currentReqId === requestIdRef.current) {
+        setSearchError('Erro ao consultar filmes.');
+        setResults([]);
+      }
     } finally {
-      setLoading(false);
+      if (currentReqId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [query]);
+
+  // Efeito de Busca Dinâmica / Tempo Real ao digitar (Debounce de 350ms)
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    const trimmed = query.trim();
+    if (trimmed.length === 0) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      setSearchError(null);
+      return;
+    }
+
+    setSearched(true);
+    setLoading(true);
+
+    debounceTimerRef.current = setTimeout(() => {
+      performSearch(trimmed);
+    }, 350);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [query, performSearch]);
+
+  // Busca imediata quando o usuário clica no botão "Buscar" ou dá Enter
+  const handleImmediateSearch = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    performSearch(query);
+  };
+
+  // Limpa campo de busca e restaura os títulos em alta
+  const handleClear = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    setQuery('');
+    setResults([]);
+    setSearched(false);
+    setLoading(false);
+    setSearchError(null);
+  };
 
   // Ação ao clicar em 'Já Assisti'
   const handleWatchMovie = async (movie) => {
@@ -79,17 +151,11 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
     }
   };
 
-  const handleClear = () => {
-    setQuery('');
-    setResults([]);
-    setSearched(false);
-  };
-
   const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
 
   return (
     <View style={styles.container}>
-      {/* Barra de Busca Cinematográfica */}
+      {/* Barra de Busca Cinematográfica com Live Search */}
       <View style={styles.searchBarWrapper}>
         <View style={styles.searchBar}>
           <Icon name="search" size={20} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
@@ -98,37 +164,50 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
             placeholder="Buscar por título (ex: Interestelar, Batman)..."
             placeholderTextColor={theme.colors.textMuted}
             value={query}
-            onChangeText={(text) => {
-              setQuery(text);
-              if (text.length === 0) {
-                setResults([]);
-                setSearched(false);
-              }
-            }}
-            onSubmitEditing={() => handleSearch()}
+            onChangeText={setQuery}
+            onSubmitEditing={handleImmediateSearch}
             returnKeyType="search"
           />
-          {query.length > 0 ? (
+
+          {/* Indicador de carregamento sutil enquanto digita */}
+          {loading && (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.primary}
+              style={{ marginRight: query.length > 0 ? 8 : 0 }}
+            />
+          )}
+
+          {/* Botão para limpar */}
+          {query.length > 0 && (
             <TouchableOpacity onPress={handleClear} style={styles.clearBtn}>
               <Icon name="close-circle" size={18} color={theme.colors.textMuted} />
             </TouchableOpacity>
-          ) : null}
+          )}
         </View>
 
         <TouchableOpacity
           style={styles.searchBtn}
-          onPress={() => handleSearch()}
+          onPress={handleImmediateSearch}
           activeOpacity={0.8}
         >
           <Text style={styles.searchBtnText}>Buscar</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Indicador de carregamento */}
-      {loading ? (
-        <Loading message="Pesquisando títulos na TMDb..." />
+      {/* Mensagem de Erro / Aviso TMDb se houver */}
+      {searchError && (
+        <View style={styles.errorBanner}>
+          <Icon name="alert-circle" size={18} color={theme.colors.warning || '#f59e0b'} style={{ marginRight: 8 }} />
+          <Text style={styles.errorText}>{searchError}</Text>
+        </View>
+      )}
+
+      {/* Se estiver buscando e ainda não tem nenhum resultado na tela */}
+      {loading && results.length === 0 ? (
+        <Loading message={`Pesquisando "${query}" na TMDb...`} />
       ) : searched ? (
-        /* Lista de Resultados da Busca */
+        /* Lista de Resultados da Busca Dinâmica */
         <FlatList
           data={results}
           keyExtractor={(item) => String(item.id)}
@@ -144,21 +223,24 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsCount}>
                 {results.length} {results.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}
+                {loading ? ' (atualizando...)' : ''}
               </Text>
             </View>
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
-              <Text style={styles.emptyTitle}>Nenhum filme encontrado</Text>
-              <Text style={styles.emptySubtitle}>
-                Tente buscar por outro termo ou confira a ortografia do título.
-              </Text>
-            </View>
+            !loading ? (
+              <View style={styles.emptyState}>
+                <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
+                <Text style={styles.emptyTitle}>Nenhum filme encontrado</Text>
+                <Text style={styles.emptySubtitle}>
+                  Não encontramos títulos correspondentes a "{query}". Verifique a ortografia ou tente outro termo.
+                </Text>
+              </View>
+            ) : null
           }
         />
       ) : (
-        /* Sugestões em Alta quando não houver busca ativa */
+        /* Sugestões em Alta quando o campo de busca estiver vazio */
         <FlatList
           data={popularMovies}
           keyExtractor={(item) => String(item.id)}
@@ -177,7 +259,7 @@ export const SearchScreen = ({ user, watchedMovies = [] }) => {
                 <Text style={styles.popularTitle}>Títulos Populares para Começar</Text>
               </View>
               <Text style={styles.popularSubtitle}>
-                Marque os que você já viu para começar a alimentar o algoritmo de descoberta por padrões!
+                Marque os filmes que você já viu para alimentar seu algoritmo de descoberta de padrões!
               </Text>
             </View>
           }
@@ -236,6 +318,23 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     fontWeight: '700',
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.sm,
+    marginHorizontal: theme.spacing.md,
+    marginVertical: theme.spacing.xs,
+    padding: theme.spacing.sm,
+  },
+  errorText: {
+    flex: 1,
+    color: '#fbbf24',
+    fontSize: theme.fontSize.xs,
+    lineHeight: 16,
+  },
   listContent: {
     paddingBottom: theme.spacing.xl,
   },
@@ -284,6 +383,6 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     textAlign: 'center',
     marginTop: 6,
-    maxWidth: 260,
+    maxWidth: 280,
   },
 });

@@ -1,61 +1,117 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { logoutUser } from '../services/authService';
 
 export const Header = ({ user }) => {
-  const handleLogout = () => {
-    Alert.alert(
-      'Sair da Conta',
-      'Tem certeza que deseja sair do NextTelas?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            await logoutUser();
-          },
-        },
-      ]
-    );
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logoutUser();
+      setShowLogoutModal(false);
+    } catch (error) {
+      console.error('Erro ao sair da conta:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const userEmail = user?.email || 'Usuário';
   const username = userEmail.split('@')[0];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.brandRow}>
-        <View style={styles.logoIconBg}>
-          <Icon name="film" size={18} color="#FFF" />
+    <>
+      <View style={styles.container}>
+        <View style={styles.brandRow}>
+          <View style={styles.logoIconBg}>
+            <Icon name="film" size={18} color="#FFF" />
+          </View>
+          <View>
+            <Text style={styles.brandName}>
+              Next<Text style={styles.brandAccent}>Telas</Text>
+            </Text>
+            <Text style={styles.tagline}>Descoberta por Padrões</Text>
+          </View>
         </View>
-        <View>
-          <Text style={styles.brandName}>
-            Next<Text style={styles.brandAccent}>Telas</Text>
-          </Text>
-          <Text style={styles.tagline}>Descoberta por Padrões</Text>
+
+        <View style={styles.userActionsRow}>
+          <View style={styles.userBadge}>
+            <Icon name="person-circle-outline" size={16} color={theme.colors.accent} />
+            <Text style={styles.userNameText} numberOfLines={1}>
+              {username}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={() => setShowLogoutModal(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+            accessibilityLabel="Sair da Conta"
+          >
+            <Icon name="log-out-outline" size={18} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.userActionsRow}>
-        <View style={styles.userBadge}>
-          <Icon name="person-circle-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.userNameText} numberOfLines={1}>
-            {username}
-          </Text>
-        </View>
+      {/* Modal de Confirmação de Logout Cinematográfico (Compatível 100% Web & Mobile) */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isLoggingOut) setShowLogoutModal(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconBadge}>
+              <Icon name="log-out-outline" size={26} color={theme.colors.primary} />
+            </View>
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Icon name="log-out-outline" size={18} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-    </View>
+            <Text style={styles.modalTitle}>Encerrar Sessão?</Text>
+            <Text style={styles.modalSubtitle}>
+              Você sairá da conta <Text style={styles.modalUserHighlight}>{userEmail}</Text>. Deseja realmente desconectar?
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowLogoutModal(false)}
+                disabled={isLoggingOut}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmBtn}
+                onPress={handleConfirmLogout}
+                disabled={isLoggingOut}
+                activeOpacity={0.8}
+              >
+                {isLoggingOut ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Sair</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
@@ -70,6 +126,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.surfaceBorder,
+    zIndex: 10,
   },
   brandRow: {
     flexDirection: 'row',
@@ -123,12 +180,96 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {
     backgroundColor: theme.colors.surface,
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: theme.borderRadius.round,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.surfaceBorder,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 6, 10, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    padding: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalIconBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  modalTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.lg,
+    fontWeight: '800',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.sm,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: theme.spacing.lg,
+  },
+  modalUserHighlight: {
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.sm,
+    fontWeight: '600',
+  },
+  confirmBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    color: '#FFF',
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
   },
 });
