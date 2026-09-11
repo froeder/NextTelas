@@ -8,6 +8,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
@@ -21,11 +22,21 @@ export const getWatchedMoviesRef = (userId) => {
 };
 
 /**
+ * Retorna a referência da subcoleção 'custom_lists' do usuário
+ * Estrutura: users/{userId}/custom_lists
+ */
+export const getCustomListsRef = (userId) => {
+  if (!userId) throw new Error('UserId é obrigatório para acessar o Firestore.');
+  return collection(db, 'users', userId, 'custom_lists');
+};
+
+/**
  * Salva um filme na subcoleção 'watched_movies' do usuário
  * @param {string} userId - ID do usuário logado
  * @param {object} movie - Dados do filme vindo da TMDb
+ * @param {string|null} listId - ID opcional de lista customizada de destino
  */
-export const addWatchedMovie = async (userId, movie) => {
+export const addWatchedMovie = async (userId, movie, listId = null) => {
   try {
     if (!userId || !movie || !movie.id) {
       throw new Error('Dados incompletos para salvar filme.');
@@ -43,6 +54,7 @@ export const addWatchedMovie = async (userId, movie) => {
       vote_average: Number(movie.vote_average) || 0,
       release_date: movie.release_date || '',
       overview: movie.overview || '',
+      listIds: listId ? [listId] : (Array.isArray(movie.listIds) ? movie.listIds : []),
       watchedAt: serverTimestamp(),
     };
 
@@ -68,6 +80,127 @@ export const removeWatchedMovie = async (userId, movieId) => {
     console.error('Erro ao remover filme dos assistidos:', error);
     return { success: false, error: error.message };
   }
+};
+
+/**
+ * Move ou atribui uma lista de filmes a uma lista customizada
+ * @param {string} userId
+ * @param {Array<string|number>} movieIds
+ * @param {string|null} targetListId - ID da lista de destino ('all' ou id customizado)
+ */
+export const moveMoviesToList = async (userId, movieIds = [], targetListId = null) => {
+  try {
+    if (!userId || !Array.isArray(movieIds) || movieIds.length === 0) {
+      return { success: false, error: 'Nenhum filme selecionado.' };
+    }
+
+    const batch = writeBatch(db);
+    const targetListIds = targetListId && targetListId !== 'all' ? [targetListId] : [];
+
+    movieIds.forEach((id) => {
+      const movieDocRef = doc(db, 'users', userId, 'watched_movies', String(id));
+      batch.set(movieDocRef, { listIds: targetListIds }, { merge: true });
+    });
+
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao mover filmes para lista:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Cria uma nova lista customizada de filmes
+ * @param {string} userId
+ * @param {string} name - Nome da lista
+ * @param {string} icon - Nome do ícone
+ */
+export const createCustomList = async (userId, name, icon = 'film') => {
+  try {
+    if (!userId || !name || !name.trim()) {
+      throw new Error('Nome da lista é obrigatório.');
+    }
+
+    const listsRef = getCustomListsRef(userId);
+    const newDocRef = doc(listsRef);
+    const listData = {
+      id: newDocRef.id,
+      name: name.trim(),
+      icon: icon || 'film',
+      createdAt: serverTimestamp(),
+    };
+
+    await setDoc(newDocRef, listData);
+    return { success: true, data: listData };
+  } catch (error) {
+    console.error('Erro ao criar lista:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Exclui uma lista customizada e desvincula os filmes que pertenciam a ela
+ * @param {string} userId
+ * @param {string} listId
+ */
+export const deleteCustomList = async (userId, listId) => {
+  try {
+    if (!userId || !listId) throw new Error('Dados incompletos para excluir lista.');
+
+    const listDocRef = doc(db, 'users', userId, 'custom_lists', listId);
+    await deleteDoc(listDocRef);
+
+    // Desvincula os filmes que estavam marcados nesta lista
+    const watchedRef = getWatchedMoviesRef(userId);
+    const snap = await getDocs(watchedRef);
+    const batch = writeBatch(db);
+    let count = 0;
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (Array.isArray(data.listIds) && data.listIds.includes(listId)) {
+        const updatedListIds = data.listIds.filter((id) => id !== listId);
+        batch.update(docSnap.ref, { listIds: updatedListIds });
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      await batch.commit();
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Erro ao excluir lista:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Escuta em tempo real as listas customizadas do usuário
+ * @param {string} userId
+ * @param {function} onUpdate
+ */
+export const subscribeCustomLists = (userId, onUpdate) => {
+  if (!userId) return () => {};
+
+  const listsRef = getCustomListsRef(userId);
+
+  return onSnapshot(
+    listsRef,
+    (snapshot) => {
+      const lists = [];
+      snapshot.forEach((docSnap) => {
+        lists.push(docSnap.data());
+      });
+      onUpdate(lists);
+    },
+    (error) => {
+      console.warn('Listener de listas customizadas:', error);
+      onUpdate([]);
+    }
+  );
 };
 
 /**

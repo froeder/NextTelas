@@ -3,29 +3,37 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 
-export const InsightBanner = ({ topGenresDetails = [], totalWatched = 0 }) => {
+export const InsightBanner = ({
+  topGenresDetails = [],
+  totalWatched = 0,
+  listName = null,
+}) => {
   if (!topGenresDetails || topGenresDetails.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Icon name="sparkles-outline" size={24} color={theme.colors.accent} />
         <View style={styles.emptyTextContainer}>
-          <Text style={styles.emptyTitle}>Descubra Novos Favoritos</Text>
+          <Text style={styles.emptyTitle}>
+            {listName ? `Descobrir para "${listName}"` : 'Descubra Novos Favoritos'}
+          </Text>
           <Text style={styles.emptySubtitle}>
-            Marque filmes que você já assistiu na aba Buscar para o algoritmo mapear seu gosto cinematográfico!
+            {listName
+              ? 'Adicione ou mova filmes para esta lista na aba Já Assisti para mapear este padrão!'
+              : 'Marque filmes que você já assistiu na aba Buscar para o algoritmo mapear seu gosto cinematográfico!'}
           </Text>
         </View>
       </View>
     );
   }
 
-  const genreNames = topGenresDetails.map(g => g.name).join(', ');
-
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={styles.badgePattern}>
           <Icon name="analytics" size={14} color="#FFF" style={{ marginRight: 4 }} />
-          <Text style={styles.badgePatternText}>DESCOBERTA POR PADRÕES</Text>
+          <Text style={styles.badgePatternText}>
+            {listName ? `PADRÕES • ${listName.toUpperCase()}` : 'DESCOBERTA POR PADRÕES'}
+          </Text>
         </View>
         <Text style={styles.statCount}>
           {totalWatched} {totalWatched === 1 ? 'filme' : 'filmes'} analisados
@@ -33,7 +41,7 @@ export const InsightBanner = ({ topGenresDetails = [], totalWatched = 0 }) => {
       </View>
 
       <Text style={styles.title}>Gêneros Predominantes:</Text>
-      
+
       <View style={styles.genresRow}>
         {topGenresDetails.map((genre) => (
           <View key={genre.id} style={styles.genreChip}>
@@ -46,7 +54,9 @@ export const InsightBanner = ({ topGenresDetails = [], totalWatched = 0 }) => {
       </View>
 
       <Text style={styles.explanation}>
-        Sugerindo os melhores lançamentos e títulos aclamados combinando seus gostos mais frequentes.
+        {listName
+          ? `Recomendando títulos afins baseados exclusivamente no perfil da sua lista "${listName}".`
+          : 'Sugerindo os melhores lançamentos e títulos aclamados combinando seus gostos mais frequentes.'}
       </Text>
     </View>
   );

@@ -18,37 +18,56 @@ import { extractTopGenres, filterAlreadyWatchedMovies } from '../utils/genreExtr
 import { discoverMoviesByGenres, getTrendingOrPopularMovies } from '../services/tmdbService';
 import { addWatchedMovie } from '../services/firestoreService';
 
-export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSearch, onAddWatched }) => {
+export const RecommendationsScreen = ({
+  user,
+  watchedMovies = [],
+  customLists = [],
+  selectedListId = 'all',
+  onSelectRecommendationList,
+  onNavigateToSearch,
+  onAddWatched,
+}) => {
   const [recommendedMovies, setRecommendedMovies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [topGenresInfo, setTopGenresInfo] = useState({ topGenreIds: [], topGenresDetails: [], totalWatched: 0 });
 
-  // PASSO A (Leitura) é fornecido por watchedMovies em tempo real via props/Firestore listener!
-  // PASSO B (Padrões) + PASSO C (Descoberta) + PASSO D (Filtro)
+  const activeListObj = customLists.find((l) => l.id === selectedListId);
+  const activeListName = selectedListId === 'all' ? null : activeListObj?.name;
+
+  // Filtra filmes assistidos que pertencem à lista selecionada para geração de padrões
+  const moviesForPattern = selectedListId === 'all'
+    ? watchedMovies
+    : watchedMovies.filter((m) => Array.isArray(m.listIds) && m.listIds.includes(selectedListId));
+
+  // Set com os IDs de todos os assistidos para conferência O(1)
+  const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
+  const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
+
+  // PASSO A (Leitura) + PASSO B (Padrões da Lista) + PASSO C (Descoberta) + PASSO D (Filtro)
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     try {
-      // Passo B (Padrões): Extrai os 2 ou 3 gêneros mais frequentes
-      const patternResult = extractTopGenres(watchedMovies, 3);
+      // Passo B: Extrai gêneros mais frequentes da lista selecionada
+      const patternResult = extractTopGenres(moviesForPattern, 3);
       setTopGenresInfo(patternResult);
 
       let rawDiscoverList = [];
 
       if (patternResult.topGenreIds.length > 0) {
-        // Passo C (Descoberta): Consulta TMDb /discover/movie com with_genres
+        // Passo C: Consulta TMDb com os gêneros da lista
         const { results, error } = await discoverMoviesByGenres(patternResult.topGenreIds);
         if (error) {
           console.warn('Erro ao consultar /discover/movie:', error);
         }
         rawDiscoverList = results || [];
       } else {
-        // Fallback: se o usuário ainda não assistiu a nada, pega os populares
+        // Fallback: se a lista não tem filmes ou usuário não tem histórico
         const { results } = await getTrendingOrPopularMovies(1);
         rawDiscoverList = results || [];
       }
 
-      // Passo D (Filtro): Oculta os filmes que o usuário já assistiu
+      // Passo D: Filtra filmes já assistidos (de qualquer lista)
       const filtered = filterAlreadyWatchedMovies(rawDiscoverList, watchedMovies);
       setRecommendedMovies(filtered);
     } catch (error) {
@@ -57,9 +76,9 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
       setLoading(false);
       setRefreshing(false);
     }
-  }, [watchedMovies]);
+  }, [moviesForPattern, watchedMovies]);
 
-  // Dispara nova descoberta sempre que a lista de filmes assistidos mudar
+  // Atualiza recomendações sempre que a lista de filmes ou a lista ativa mudar
   useEffect(() => {
     fetchRecommendations();
   }, [fetchRecommendations]);
@@ -72,7 +91,9 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
   const handleWatchMovie = async (movie) => {
     if (!user?.uid) return;
     if (onAddWatched) {
-      const res = await onAddWatched(movie);
+      // Se estiver em uma lista customizada, adiciona já vinculando à lista!
+      const targetList = selectedListId !== 'all' ? selectedListId : null;
+      const res = await onAddWatched(movie, targetList);
       if (res && !res.success && res.error) {
         if (typeof window !== 'undefined' && window.alert) {
           window.alert(res.error);
@@ -92,7 +113,7 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
     }
   };
 
-  // Separa os primeiros 6 filmes para o carrossel de destaques e o restante para a lista
+  // Separa os primeiros 6 filmes para o carrossel e o restante para a lista vertical
   const carouselItems = recommendedMovies.slice(0, 6);
   const listItems = recommendedMovies.slice(6);
 
@@ -108,23 +129,107 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
         />
       }
     >
+      {/* Seletor de Listas para Recomendações Segmentadas */}
+      <View style={styles.listSelectorWrapper}>
+        <View style={styles.listSelectorHeader}>
+          <Text style={styles.listSelectorTitle}>Recomendações Baseadas Em:</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listSelectorScroll}
+        >
+          {/* Opção Geral */}
+          <TouchableOpacity
+            style={[
+              styles.selectorChip,
+              selectedListId === 'all' && styles.selectorChipActive,
+            ]}
+            onPress={() => onSelectRecommendationList && onSelectRecommendationList('all')}
+            activeOpacity={0.8}
+          >
+            <Icon
+              name="sparkles"
+              size={13}
+              color={selectedListId === 'all' ? '#FFF' : theme.colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.selectorChipText,
+                selectedListId === 'all' && styles.selectorChipTextActive,
+              ]}
+            >
+              Geral ({watchedMovies.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* Listas Customizadas */}
+          {customLists.map((list) => {
+            const isActive = selectedListId === list.id;
+            const count = watchedMovies.filter(
+              (m) => Array.isArray(m.listIds) && m.listIds.includes(list.id)
+            ).length;
+
+            return (
+              <TouchableOpacity
+                key={list.id}
+                style={[
+                  styles.selectorChip,
+                  isActive && styles.selectorChipActive,
+                ]}
+                onPress={() => onSelectRecommendationList && onSelectRecommendationList(list.id)}
+                activeOpacity={0.8}
+              >
+                <Icon
+                  name={list.icon || 'film'}
+                  size={13}
+                  color={isActive ? '#FFF' : theme.colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.selectorChipText,
+                    isActive && styles.selectorChipTextActive,
+                  ]}
+                >
+                  {list.name} ({count})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {/* Banner Explicativo da Descoberta por Padrões */}
       <InsightBanner
         topGenresDetails={topGenresInfo.topGenresDetails}
         totalWatched={topGenresInfo.totalWatched}
+        listName={activeListName}
       />
 
       {loading && !refreshing ? (
-        <Loading message="Calculando padrões e descobrindo recomendações..." />
+        <Loading message={activeListName ? `Descobrindo filmes para "${activeListName}"...` : "Calculando padrões e descobrindo recomendações..."} />
+      ) : selectedListId !== 'all' && moviesForPattern.length === 0 ? (
+        /* Empty State: A lista customizada não tem filmes */
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyIconBg}>
+            <Icon name="film-outline" size={42} color={theme.colors.textMuted} />
+          </View>
+          <Text style={styles.emptyTitle}>Lista "{activeListName}" Vazia</Text>
+          <Text style={styles.emptyDescription}>
+            Adicione ou mova filmes que você já assistiu para a lista "{activeListName}" na aba Já Assisti para gerar recomendações exclusivas!
+          </Text>
+        </View>
       ) : watchedMovies.length === 0 ? (
-        /* Empty State: Usuário ainda não marcou nenhum filme */
+        /* Empty State Geral */
         <View style={styles.emptyStateContainer}>
           <View style={styles.emptyIconBg}>
             <Icon name="sparkles" size={48} color={theme.colors.accent} />
           </View>
           <Text style={styles.emptyTitle}>Seu Perfil Está Vazio</Text>
           <Text style={styles.emptyDescription}>
-            Para ativarmos a <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Descoberta por Padrões</Text>, você precisa marcar alguns filmes que já assistiu.
+            Para ativarmos a <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Descoberta por Padrões</Text>, marque alguns filmes que você já assistiu.
           </Text>
 
           <TouchableOpacity
@@ -142,44 +247,44 @@ export const RecommendationsScreen = ({ user, watchedMovies = [], onNavigateToSe
           <Icon name="film-outline" size={48} color={theme.colors.textMuted} />
           <Text style={styles.emptyTitle}>Sem Novas Sugestões no Momento</Text>
           <Text style={styles.emptyDescription}>
-            Você já assistiu a quase todos os títulos mais populares desses gêneros! Tente puxar a tela para atualizar ou adicionar filmes de outros estilos.
+            Você já assistiu a quase todos os títulos mais populares desses gêneros! Tente puxar a tela para atualizar.
           </Text>
         </View>
       ) : (
-        /* Renderização das Recomendações: Carrossel + Grid */
-        <View style={styles.resultsContainer}>
+        /* Conteúdo de Recomendações */
+        <>
           {/* Carrossel de Destaques Recomendados */}
           {carouselItems.length > 0 && (
             <MovieCarousel
-              title="Em Alta no Seu Gosto"
+              title={activeListName ? `Destaques para "${activeListName}"` : "Destaques para Você"}
               movies={carouselItems}
               onPressWatch={handleWatchMovie}
+              isMovieWatched={isMovieWatched}
             />
           )}
 
-          {/* Lista de Filmes Recomendados */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Icon name="star" size={18} color={theme.colors.accent} style={{ marginRight: 6 }} />
-              <Text style={styles.sectionTitle}>Mais Descobertas para Você</Text>
+          {/* Lista Vertical de Mais Recomendações */}
+          {listItems.length > 0 && (
+            <View style={styles.verticalSection}>
+              <View style={styles.sectionHeader}>
+                <Icon name="film" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.sectionTitle}>
+                  {activeListName ? `Mais Títulos para "${activeListName}"` : 'Mais Títulos Compatíveis'}
+                </Text>
+              </View>
+
+              {listItems.map((movie) => (
+                <MovieCard
+                  key={movie.id}
+                  movie={movie}
+                  isWatched={isMovieWatched(movie.id)}
+                  onPressWatch={handleWatchMovie}
+                />
+              ))}
             </View>
-            <Text style={styles.sectionSubtitle}>
-              Filmes inéditos que combinam com seu histórico
-            </Text>
-          </View>
-
-          {listItems.map((movie) => (
-            <MovieCard
-              key={String(movie.id)}
-              movie={movie}
-              isWatched={false}
-              onPressWatch={handleWatchMovie}
-            />
-          ))}
-        </View>
+          )}
+        </>
       )}
-
-      <View style={{ height: theme.spacing.xl }} />
     </ScrollView>
   );
 };
@@ -188,6 +293,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  listSelectorWrapper: {
+    backgroundColor: theme.colors.surface,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  listSelectorHeader: {
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: 6,
+  },
+  listSelectorTitle: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  listSelectorScroll: {
+    paddingHorizontal: theme.spacing.md,
+    gap: 8,
+    alignItems: 'center',
+  },
+  selectorChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.round,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  selectorChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  selectorChipText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+  },
+  selectorChipTextActive: {
+    color: '#FFF',
+    fontWeight: '700',
   },
   emptyStateContainer: {
     alignItems: 'center',
@@ -209,16 +360,16 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: theme.colors.text,
     fontSize: theme.fontSize.lg,
-    fontWeight: '800',
+    fontWeight: '700',
+    marginBottom: 6,
     textAlign: 'center',
-    marginBottom: 8,
   },
   emptyDescription: {
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.sm,
     textAlign: 'center',
     lineHeight: 20,
-    maxWidth: 290,
+    maxWidth: 320,
     marginBottom: theme.spacing.lg,
   },
   goToSearchButton: {
@@ -228,37 +379,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: 12,
     borderRadius: theme.borderRadius.md,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
   },
   goToSearchButtonText: {
     color: '#FFF',
     fontSize: theme.fontSize.sm,
     fontWeight: '700',
   },
-  resultsContainer: {
-    marginTop: theme.spacing.xs,
+  verticalSection: {
+    marginTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   sectionHeader: {
-    paddingHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   sectionTitle: {
     color: theme.colors.text,
-    fontSize: theme.fontSize.lg,
+    fontSize: theme.fontSize.md,
     fontWeight: '700',
-  },
-  sectionSubtitle: {
-    color: theme.colors.textSecondary,
-    fontSize: theme.fontSize.xs,
-    marginTop: 2,
   },
 });

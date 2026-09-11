@@ -20,6 +20,11 @@ export const MovieCard = ({
   onPressWatch,
   onPressRemove,
   showRemoveButton = false,
+  isSelectable = false,
+  isSelected = false,
+  onToggleSelect,
+  onPressMoveToList,
+  customListName = null,
 }) => {
   const [loadingAction, setLoadingAction] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -57,6 +62,14 @@ export const MovieCard = ({
     };
   }, [movie?.id, runtimeText]);
 
+  const handleCardPress = () => {
+    if (isSelectable) {
+      if (onToggleSelect) onToggleSelect(movie);
+    } else {
+      setShowDetailsModal(true);
+    }
+  };
+
   const handleWatchToggle = async () => {
     if (loadingAction || isWatched) return;
     try {
@@ -80,9 +93,12 @@ export const MovieCard = ({
   return (
     <>
       <TouchableOpacity
-        style={styles.card}
+        style={[
+          styles.card,
+          isSelected && styles.cardSelected,
+        ]}
         activeOpacity={0.88}
-        onPress={() => setShowDetailsModal(true)}
+        onPress={handleCardPress}
       >
         {/* Pôster com proporção cinematográfica */}
         <View style={styles.posterContainer}>
@@ -106,6 +122,13 @@ export const MovieCard = ({
               <Text style={styles.ratingText}>{rating}</Text>
             </View>
           ) : null}
+
+          {/* Checkbox quando em modo de seleção */}
+          {isSelectable && (
+            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+              {isSelected && <Icon name="checkmark" size={14} color="#FFF" />}
+            </View>
+          )}
         </View>
 
         {/* Conteúdo e Informações do Filme */}
@@ -115,7 +138,7 @@ export const MovieCard = ({
               {movie.title}
             </Text>
 
-            {/* Linha com Ano e Duração do Filme */}
+            {/* Linha com Ano, Duração e Lista */}
             <View style={styles.metaRow}>
               {releaseYear ? (
                 <Text style={styles.year}>{releaseYear}</Text>
@@ -131,6 +154,12 @@ export const MovieCard = ({
                   <Text style={styles.runtimeText}>{runtimeText}</Text>
                 </View>
               ) : null}
+
+              {customListName ? (
+                <View style={styles.listBadge}>
+                  <Text style={styles.listBadgeText}>{customListName}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -143,37 +172,53 @@ export const MovieCard = ({
             </View>
           ) : null}
 
-          {/* Sinopse Curta com dica de clique */}
+          {/* Sinopse Curta */}
           {movie.overview ? (
             <Text style={styles.overview} numberOfLines={2}>
               {movie.overview}
             </Text>
           ) : null}
 
-          {/* Ação: Botão 'Já Assisti' ou 'Remover' */}
+          {/* Ação: Botão 'Já Assisti' ou 'Remover' ou 'Mover' */}
           <View style={styles.actionRow}>
             {showRemoveButton ? (
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  handleRemove();
-                }}
-                disabled={loadingAction}
-                activeOpacity={0.7}
-              >
-                {loadingAction ? (
-                  <View style={styles.btnContentRow}>
-                    <ActivityIndicator size="small" color={theme.colors.error} style={{ marginRight: 6 }} />
-                    <Text style={styles.removeButtonText}>Removendo...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.btnContentRow}>
-                    <Icon name="trash-outline" size={15} color={theme.colors.error} />
-                    <Text style={styles.removeButtonText}>Remover</Text>
-                  </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    handleRemove();
+                  }}
+                  disabled={loadingAction}
+                  activeOpacity={0.7}
+                >
+                  {loadingAction ? (
+                    <View style={styles.btnContentRow}>
+                      <ActivityIndicator size="small" color={theme.colors.error} style={{ marginRight: 6 }} />
+                      <Text style={styles.removeButtonText}>Removendo...</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.btnContentRow}>
+                      <Icon name="trash-outline" size={15} color={theme.colors.error} />
+                      <Text style={styles.removeButtonText}>Remover</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {onPressMoveToList && (
+                  <TouchableOpacity
+                    style={styles.moveButton}
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      onPressMoveToList(movie);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="add" size={14} color={theme.colors.textSecondary} />
+                    <Text style={styles.moveButtonText}>Lista</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
             ) : (
               <TouchableOpacity
                 style={[
@@ -220,9 +265,11 @@ export const MovieCard = ({
               </TouchableOpacity>
             )}
 
-            <View style={styles.tapForMore}>
-              <Text style={styles.tapForMoreText}>Toque para detalhes</Text>
-            </View>
+            {!isSelectable && (
+              <View style={styles.tapForMore}>
+                <Text style={styles.tapForMoreText}>Toque para detalhes</Text>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -256,6 +303,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
+  },
+  cardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(229, 9, 20, 0.08)',
   },
   posterContainer: {
     width: 100,
@@ -300,6 +351,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 3,
   },
+  checkbox: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(11, 12, 18, 0.85)',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
   detailsContainer: {
     flex: 1,
     marginLeft: theme.spacing.md,
@@ -318,6 +386,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   year: {
     color: theme.colors.textSecondary,
@@ -325,7 +395,7 @@ const styles = StyleSheet.create({
   },
   metaDot: {
     color: theme.colors.textMuted,
-    marginHorizontal: 5,
+    marginHorizontal: 3,
     fontSize: 10,
   },
   runtimeContainer: {
@@ -342,6 +412,20 @@ const styles = StyleSheet.create({
     color: theme.colors.accent,
     fontSize: 11,
     fontWeight: '700',
+  },
+  listBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.xs,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginLeft: 4,
+  },
+  listBadgeText: {
+    color: theme.colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   genresWrapper: {
     flexDirection: 'row',
@@ -398,7 +482,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: theme.borderRadius.sm,
-    minWidth: 95,
+    minWidth: 90,
     justifyContent: 'center',
   },
   removeButtonText: {
@@ -406,6 +490,22 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  moveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.sm,
+  },
+  moveButtonText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+    marginLeft: 3,
   },
   tapForMore: {
     paddingLeft: 4,
