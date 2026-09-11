@@ -20,7 +20,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && npx -y firebase-tools deploy --only hosting",
+    "deploy": "npm run build && npx -y firebase-tools deploy --only hosting,firestore:rules",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
