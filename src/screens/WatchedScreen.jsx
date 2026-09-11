@@ -42,12 +42,15 @@ export const WatchedScreen = ({
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [singleMovieToMove, setSingleMovieToMove] = useState(null);
 
-  // Filtra filmes da lista ativa
-  const filteredMovies = activeListId === 'all'
+  // Filtra filmes da lista ativa e ordena alfabeticamente
+  const filteredMovies = (activeListId === 'all'
     ? watchedMovies
     : watchedMovies.filter(
         (m) => Array.isArray(m.listIds) && m.listIds.includes(activeListId)
-      );
+      )
+  ).slice().sort((a, b) =>
+    (a.title || '').localeCompare(b.title || '', 'pt-BR', { sensitivity: 'base' })
+  );
 
   const activeListObj = customLists.find((l) => l.id === activeListId);
 

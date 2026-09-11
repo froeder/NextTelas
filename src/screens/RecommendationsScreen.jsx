@@ -279,7 +279,10 @@ export const RecommendationsScreen = ({
   // ordem dos filmes-origem para exibição
   const [sourceOrder, setSourceOrder] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [topGenresInfo, setTopGenresInfo] = useState({ topGenreIds: [], topGenresDetails: [], totalWatched: 0 });
   const [detailMovie, setDetailMovie] = useState(null);
 
@@ -317,7 +320,7 @@ export const RecommendationsScreen = ({
         })
         .slice(0, MAX_SOURCE_MOVIES);
 
-      // Busca recomendações em paralelo para todos os filmes-origem
+      // Busca recomendações em paralelo para todos os filmes-origem (página 1)
       const results = await Promise.allSettled(
         sourceCandidates.map((src) => getMovieRecommendations(src.id, 1))
       );
@@ -325,11 +328,15 @@ export const RecommendationsScreen = ({
       const newRecsBySource = {};
       const newOrder = [];
 
+      let anyHasMore = false;
       results.forEach((result, idx) => {
         const sourceMovie = sourceCandidates[idx];
         if (result.status !== 'fulfilled') return;
 
         const recs = result.value.results || [];
+        const totalPages = result.value.total_pages || 1;
+        if (totalPages > 1) anyHasMore = true;
+
         // Filtra já assistidos + duplicatas entre seções
         const seen = new Set(Object.values(newRecsBySource).flat().map((m) => String(m.id)));
         const fresh = recs
@@ -344,6 +351,8 @@ export const RecommendationsScreen = ({
 
       setRecsBySource(newRecsBySource);
       setSourceOrder(newOrder);
+      setCurrentPage(1);
+      setHasMore(anyHasMore);
     } catch (error) {
       console.error('Erro no fluxo de recomendações:', error);
     } finally {
@@ -359,6 +368,65 @@ export const RecommendationsScreen = ({
   const handleRefresh = () => {
     setRefreshing(true);
     fetchRecommendations();
+  };
+
+  // Carrega mais recomendações (próxima página da TMDb por filme-origem)
+  const handleLoadMore = async () => {
+    if (loadingMore || loading) return;
+    setLoadingMore(true);
+    const nextPage = currentPage + 1;
+    try {
+      const sourceCandidates = [...moviesForPattern]
+        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
+        .slice(0, MAX_SOURCE_MOVIES);
+
+      const results = await Promise.allSettled(
+        sourceCandidates.map((src) => getMovieRecommendations(src.id, nextPage))
+      );
+
+      const allCurrentIds = new Set([
+        ...watchedIdsSet,
+        ...Object.values(recsBySource).flat().map((m) => String(m.id)),
+      ]);
+
+      let anyNewFound = false;
+      let anyHasMore = false;
+
+      setRecsBySource((prev) => {
+        const updated = { ...prev };
+        results.forEach((result, idx) => {
+          const sourceMovie = sourceCandidates[idx];
+          if (result.status !== 'fulfilled') return;
+
+          const recs = result.value.results || [];
+          const totalPages = result.value.total_pages || 1;
+          if (nextPage < totalPages) anyHasMore = true;
+
+          const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
+          fresh.forEach((m) => allCurrentIds.add(String(m.id)));
+
+          if (fresh.length > 0) {
+            anyNewFound = true;
+            // Acumula, mas limita a 12 por seção para não sobrecarregar a UI
+            const existing = updated[sourceMovie.id] || [];
+            updated[sourceMovie.id] = [...existing, ...fresh].slice(0, 12);
+
+            // Garante que a seção está na ordem
+            setSourceOrder((order) =>
+              order.includes(String(sourceMovie.id)) ? order : [...order, String(sourceMovie.id)]
+            );
+          }
+        });
+        return updated;
+      });
+
+      setCurrentPage(nextPage);
+      setHasMore(anyHasMore && anyNewFound);
+    } catch (err) {
+      console.error('Erro ao carregar mais:', err);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const handleWatchMovie = async (movie) => {
@@ -557,6 +625,42 @@ export const RecommendationsScreen = ({
                 );
               })
             )}
+
+            {/* Botão de Carregar Mais no rodapé */}
+            {!hasTrending && (
+              <View style={styles.loadMoreWrapper}>
+                {hasMore ? (
+                  <TouchableOpacity
+                    style={[styles.loadMoreBtn, loadingMore && styles.loadMoreBtnLoading]}
+                    onPress={handleLoadMore}
+                    disabled={loadingMore || loading}
+                    activeOpacity={0.8}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.loadMoreBtnText}>Buscando mais...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="refresh" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.loadMoreBtnText}>Buscar Mais Recomendações</Text>
+                        {currentPage > 1 && (
+                          <View style={styles.pageChip}>
+                            <Text style={styles.pageChipText}>p.{currentPage + 1}</Text>
+                          </View>
+                        )}
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.noMoreWrapper}>
+                    <Icon name="checkmark-circle" size={16} color={theme.colors.success} style={{ marginRight: 6 }} />
+                    <Text style={styles.noMoreText}>Todas as sugestões foram carregadas</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -719,5 +823,61 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: theme.fontSize.sm,
     fontWeight: '700',
+  },
+  loadMoreWrapper: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 13,
+    borderRadius: theme.borderRadius.md,
+    width: '100%',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  loadMoreBtnLoading: {
+    backgroundColor: theme.colors.primaryDark,
+    shadowOpacity: 0.2,
+  },
+  loadMoreBtnText: {
+    color: '#FFF',
+    fontSize: theme.fontSize.sm,
+    fontWeight: '700',
+  },
+  pageChip: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: theme.borderRadius.round,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  pageChipText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  noMoreWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.successBg,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.3)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.md,
+  },
+  noMoreText: {
+    color: theme.colors.success,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
   },
 });
