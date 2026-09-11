@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Icon } from './Icon';
 import { theme } from '../utils/theme';
@@ -44,9 +45,11 @@ export const Header = ({ user }) => {
     <>
       <View style={styles.container}>
         <View style={styles.brandRow}>
-          <View style={styles.logoIconBg}>
-            <Icon name="film" size={18} color="#FFF" />
-          </View>
+          <Image
+            source={{ uri: '/assets/icon.png' }}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <View style={styles.brandTextCol}>
             <Text style={styles.brandName}>
               Next<Text style={styles.brandAccent}>Telas</Text>
@@ -159,13 +162,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  logoIconBg: {
-    backgroundColor: theme.colors.primary,
+  logoImage: {
     width: 34,
     height: 34,
     borderRadius: theme.borderRadius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 10,
   },
   brandTextCol: {

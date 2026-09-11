@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
@@ -76,9 +77,11 @@ export const AuthScreen = () => {
 
         {/* Logo e Cabeçalho */}
         <View style={styles.header}>
-          <View style={styles.logoBadge}>
-            <Icon name="film" size={36} color="#FFF" />
-          </View>
+          <Image
+            source={{ uri: '/assets/icon.png' }}
+            style={styles.authLogoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>
             Next<Text style={styles.appAccent}>Telas</Text>
           </Text>
@@ -241,19 +244,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.xl,
   },
-  logoBadge: {
+  authLogoImage: {
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: theme.spacing.md,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
   },
   appName: {
     color: theme.colors.text,
