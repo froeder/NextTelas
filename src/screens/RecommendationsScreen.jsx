@@ -283,6 +283,8 @@ export const RecommendationsScreen = ({
   const [recsBySource, setRecsBySource] = useState({});
   // ordem dos filmes-origem para exibição
   const [sourceOrder, setSourceOrder] = useState([]);
+  // Mapa de { movieId: movieObject } para busca rápida
+  const [sourceMovieMap, setSourceMovieMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -357,9 +359,15 @@ export const RecommendationsScreen = ({
   const hasMoreRef = React.useRef(hasMore);
   hasMoreRef.current = hasMore;
 
+  const recsBySourceRef = React.useRef(recsBySource);
+  recsBySourceRef.current = recsBySource;
+
+  const sourceOrderRef = React.useRef(sourceOrder);
+  sourceOrderRef.current = sourceOrder;
+
   const contentHeightRef = React.useRef(0);
 
-  // Carrega mais recomendações (Scroll Infinito: profundidade TMDb + próximos filmes assistidos + gêneros + failsafe de em alta)
+  // Carrega mais recomendações (Scroll Infinito)
   const handleLoadMore = useCallback(async () => {
     if (loadingMoreRef.current || loadingRef.current) return;
     setLoadingMore(true);
@@ -372,122 +380,97 @@ export const RecommendationsScreen = ({
         (a, b) => (b.vote_average || 0) - (a.vote_average || 0)
       );
 
-      // Fontes já exibidas
-      const currentSources = sortedWatched.slice(0, currentPage * MAX_SOURCE_MOVIES);
-      // Próximo bloco de filmes-origem da coleção do usuário
-      let nextSources = sortedWatched.slice(
-        currentPage * MAX_SOURCE_MOVIES,
-        (currentPage + 1) * MAX_SOURCE_MOVIES
-      );
-
-      // Se já percorreu toda a lista, cicla por uma amostra dos filmes assistidos para cobrir 100% da biblioteca
-      if (nextSources.length === 0 && sortedWatched.length > 0) {
-        const offset = (currentPage * MAX_SOURCE_MOVIES) % sortedWatched.length;
-        nextSources = sortedWatched.slice(offset, offset + MAX_SOURCE_MOVIES);
+      // Seleciona um lote de 3 filmes assistidos para esta página
+      let batch = [];
+      if (sortedWatched.length > 0) {
+        const batchSize = 3;
+        const startIndex = ((nextPage - 2) * batchSize) % sortedWatched.length;
+        batch = sortedWatched.slice(startIndex, startIndex + batchSize);
+        if (batch.length < batchSize && sortedWatched.length > batch.length) {
+          const remainingNeeded = batchSize - batch.length;
+          batch = [...batch, ...sortedWatched.slice(0, remainingNeeded)];
+        }
       }
 
+      // Atualiza mapa de filmes-origem
+      if (sortedWatched.length > 0) {
+        const mapUpdate = {};
+        sortedWatched.forEach((m) => { mapUpdate[String(m.id)] = m; });
+        setSourceMovieMap((prev) => ({ ...prev, ...mapUpdate }));
+      }
+
+      const currentRecsList = Object.values(recsBySourceRef.current).flat();
       const allCurrentIds = new Set([
         ...watchedIdsSet,
-        ...Object.values(recsBySource).flat().map((m) => String(m.id)),
+        ...currentRecsList.map((m) => String(m.id)),
       ]);
 
       const topGenreIds = topGenresInfo.topGenreIds || [];
 
-      // Recomendações em paralelo considerando TODOS os filmes e gêneros
-      const [deepResults, newSourceResults, genreDiscoverResults] = await Promise.all([
-        Promise.allSettled(currentSources.map((src) => getMovieRecommendations(src.id, nextPage))),
-        Promise.allSettled(nextSources.map((src) => getMovieRecommendations(src.id, 1))),
+      // Executa requisições em paralelo
+      const [watchedRecsResults, genreDiscoverResults, trendingResults] = await Promise.all([
+        Promise.allSettled(batch.map((src) => getMovieRecommendations(src.id, nextPage))),
         discoverMoviesByGenres(topGenreIds, nextPage).catch(() => ({ results: [] })),
+        getTrendingOrPopularMovies(nextPage).catch(() => ({ results: [] })),
       ]);
 
       let totalNewAdded = 0;
+      const newRecsMap = {};
+      const newKeysOrder = [];
 
-      // Failsafe: se as buscas paralelas trouxerem menos de 6 novos filmes, busca mais populares
-      let fallbackRecs = [];
-      const primaryNewCount = 
-        deepResults.reduce((acc, r) => acc + (r.value?.results?.length || 0), 0) +
-        newSourceResults.reduce((acc, r) => acc + (r.value?.results?.length || 0), 0) +
-        (genreDiscoverResults?.results?.length || 0);
+      // Processa filmes assistidos do lote
+      watchedRecsResults.forEach((result, idx) => {
+        const sourceMovie = batch[idx];
+        if (result.status !== 'fulfilled' || !sourceMovie) return;
 
-      if (primaryNewCount < 6) {
-        const fallbackRes = await getTrendingOrPopularMovies(nextPage).catch(() => ({ results: [] }));
-        fallbackRecs = fallbackRes?.results || [];
-      }
+        const recs = result.value.results || [];
+        const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
+        fresh.forEach((m) => allCurrentIds.add(String(m.id)));
 
-      setRecsBySource((prev) => {
-        const updated = { ...prev };
-        const newSourceIds = [];
+        if (fresh.length > 0) {
+          totalNewAdded += fresh.length;
+          const isAlreadyInOrder = sourceOrderRef.current.some(
+            (key) => String(key) === String(sourceMovie.id)
+          );
+          const key = isAlreadyInOrder
+            ? `__watched_${sourceMovie.id}_p${nextPage}__`
+            : String(sourceMovie.id);
 
-        // a) Expande os filmes das fontes atuais
-        deepResults.forEach((result, idx) => {
-          const sourceMovie = currentSources[idx];
-          if (result.status !== 'fulfilled' || !sourceMovie) return;
-
-          const recs = result.value.results || [];
-          const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
-          fresh.forEach((m) => allCurrentIds.add(String(m.id)));
-
-          if (fresh.length > 0) {
-            totalNewAdded += fresh.length;
-            const existing = updated[sourceMovie.id] || [];
-            updated[sourceMovie.id] = [...existing, ...fresh].slice(0, 20);
-          }
-        });
-
-        // b) Cria novas seções para o próximo bloco de filmes assistidos
-        newSourceResults.forEach((result, idx) => {
-          const sourceMovie = nextSources[idx];
-          if (result.status !== 'fulfilled' || !sourceMovie) return;
-
-          const recs = result.value.results || [];
-          const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
-          fresh.forEach((m) => allCurrentIds.add(String(m.id)));
-
-          if (fresh.length > 0) {
-            totalNewAdded += fresh.length;
-            updated[sourceMovie.id] = fresh.slice(0, 20);
-            newSourceIds.push(sourceMovie.id);
-          }
-        });
-
-        // c) Descobertas com base em todos os gêneros do usuário
-        const genreRecs = genreDiscoverResults?.results || [];
-        const freshGenreRecs = genreRecs.filter((m) => !allCurrentIds.has(String(m.id)));
-        if (freshGenreRecs.length > 0) {
-          totalNewAdded += freshGenreRecs.length;
-          freshGenreRecs.forEach((m) => allCurrentIds.add(String(m.id)));
-          const genreKey = '__genre_discover__';
-          const existingGenre = updated[genreKey] || [];
-          updated[genreKey] = [...existingGenre, ...freshGenreRecs].slice(0, 20);
-          newSourceIds.push(genreKey);
+          newRecsMap[key] = fresh.slice(0, 16);
+          newKeysOrder.push(key);
         }
-
-        // d) Failsafe garantido: adiciona filmes em alta se houver poucas novidades
-        if (fallbackRecs.length > 0) {
-          const freshFallback = fallbackRecs.filter((m) => !allCurrentIds.has(String(m.id)));
-          if (freshFallback.length > 0) {
-            totalNewAdded += freshFallback.length;
-            freshFallback.forEach((m) => allCurrentIds.add(String(m.id)));
-            const fallbackKey = '__trending_discover__';
-            const existingFallback = updated[fallbackKey] || [];
-            updated[fallbackKey] = [...existingFallback, ...freshFallback].slice(0, 20);
-            newSourceIds.push(fallbackKey);
-          }
-        }
-
-        if (newSourceIds.length > 0) {
-          setSourceOrder((prevOrder) => {
-            const existingSet = new Set(prevOrder.map((id) => String(id)));
-            const idsToAdd = newSourceIds.filter((id) => !existingSet.has(String(id)));
-            return idsToAdd.length > 0 ? [...prevOrder, ...idsToAdd] : prevOrder;
-          });
-        }
-
-        return updated;
       });
 
+      // Processa Descobertas por Gênero
+      const genreRecs = genreDiscoverResults?.results || [];
+      const freshGenreRecs = genreRecs.filter((m) => !allCurrentIds.has(String(m.id)));
+      if (freshGenreRecs.length > 0) {
+        freshGenreRecs.forEach((m) => allCurrentIds.add(String(m.id)));
+        totalNewAdded += freshGenreRecs.length;
+        const genreKey = `__genre_p${nextPage}__`;
+        newRecsMap[genreKey] = freshGenreRecs.slice(0, 16);
+        newKeysOrder.push(genreKey);
+      }
+
+      // Processa Filmes em Alta / Populares
+      const trendingRecs = trendingResults?.results || [];
+      const freshTrendingRecs = trendingRecs.filter((m) => !allCurrentIds.has(String(m.id)));
+      if (freshTrendingRecs.length > 0) {
+        freshTrendingRecs.forEach((m) => allCurrentIds.add(String(m.id)));
+        totalNewAdded += freshTrendingRecs.length;
+        const trendingKey = `__trending_p${nextPage}__`;
+        newRecsMap[trendingKey] = freshTrendingRecs.slice(0, 16);
+        newKeysOrder.push(trendingKey);
+      }
+
+      // Atualiza os estados de recomendação e ordem
+      if (newKeysOrder.length > 0) {
+        setRecsBySource((prev) => ({ ...prev, ...newRecsMap }));
+        setSourceOrder((prev) => [...prev, ...newKeysOrder]);
+      }
+
       if (totalNewAdded > 0) {
-        setLoadedMoreBadge(`✨ +${totalNewAdded} novas sugestões baseadas no seu perfil!`);
+        setLoadedMoreBadge(`✨ +${totalNewAdded} novas sugestões carregadas!`);
       }
 
       setCurrentPage(nextPage);
@@ -498,7 +481,7 @@ export const RecommendationsScreen = ({
       setLoadingMore(false);
       loadingMoreRef.current = false;
     }
-  }, [currentPage, moviesForPattern, recsBySource, topGenresInfo.topGenreIds, watchedIdsSet]);
+  }, [currentPage, moviesForPattern, topGenresInfo.topGenreIds, watchedIdsSet]);
 
   const handleLoadMoreRef = React.useRef(handleLoadMore);
   handleLoadMoreRef.current = handleLoadMore;
@@ -511,8 +494,8 @@ export const RecommendationsScreen = ({
 
     if (totalHeight === 0) return;
 
-    // Quando o usuário rola até 600px antes do fim da página
-    const isNearBottom = height + offsetY >= totalHeight - 600;
+    // Dispara carregamento quando estiver a 800px do fim
+    const isNearBottom = height + offsetY >= totalHeight - 800;
 
     if (isNearBottom && hasMoreRef.current && !loadingMoreRef.current && !loadingRef.current) {
       if (handleLoadMoreRef.current) {
@@ -533,16 +516,19 @@ export const RecommendationsScreen = ({
       // Sem filmes: mostra fallback de populares como "seed"
       if (moviesForPattern.length === 0) {
         const { results } = await getTrendingOrPopularMovies(1);
-        const filtered = filterAlreadyWatchedMovies(results || [], watchedMovies).slice(0, 6);
+        const filtered = filterAlreadyWatchedMovies(results || [], watchedMovies).slice(0, 8);
         setSourceOrder(['__trending__']);
         setRecsBySource({ '__trending__': filtered });
         return;
       }
 
-      // Amostra diversificada de filmes assistidos do usuário
-      const sourceCandidates = [...moviesForPattern]
-        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-        .slice(0, MAX_SOURCE_MOVIES);
+      // Amostra diversificada dos filmes assistidos do usuário
+      const sorted = [...moviesForPattern].sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+      const sourceCandidates = sorted.slice(0, MAX_SOURCE_MOVIES);
+
+      const initialMap = {};
+      sorted.forEach((m) => { initialMap[String(m.id)] = m; });
+      setSourceMovieMap(initialMap);
 
       // Busca recomendações em paralelo para os filmes-origem iniciais (página 1)
       const results = await Promise.allSettled(
@@ -563,8 +549,8 @@ export const RecommendationsScreen = ({
           .slice(0, RECS_PER_MOVIE);
 
         if (fresh.length > 0) {
-          newRecsBySource[sourceMovie.id] = fresh;
-          newOrder.push(sourceMovie.id);
+          newRecsBySource[String(sourceMovie.id)] = fresh;
+          newOrder.push(String(sourceMovie.id));
         }
       });
 
@@ -813,13 +799,19 @@ export const RecommendationsScreen = ({
                 </ScrollView>
               </View>
             ) : (
-              /* Uma seção por filme assistido */
+              /* Seções de recomendações dinâmicas e infinitas */
               sourceOrder.map((sourceId) => {
-                if (sourceId === '__genre_discover__') {
-                  const genreRecs = recsBySource['__genre_discover__'] || [];
-                  if (genreRecs.length === 0) return null;
+                const recs = recsBySource[sourceId] || [];
+                if (recs.length === 0) return null;
+
+                // a) Seção de Descoberta por Gênero
+                if (String(sourceId).startsWith('__genre')) {
+                  const pageNum = String(sourceId).match(/p(\d+)/)?.[1];
+                  const subText = pageNum
+                    ? `Sugestões dos seus gêneros favoritos (Página ${pageNum})`
+                    : 'Baseada nos seus gêneros favoritos';
                   return (
-                    <View key="__genre_discover__" style={sectionStyles.container}>
+                    <View key={sourceId} style={sectionStyles.container}>
                       <View style={sectionStyles.header}>
                         <View
                           style={[
@@ -832,11 +824,11 @@ export const RecommendationsScreen = ({
                         <View style={sectionStyles.headerText}>
                           <Text style={sectionStyles.sourceLabel}>Descoberta por Gênero</Text>
                           <Text style={sectionStyles.sourceTitle} numberOfLines={1}>
-                            Baseada nos seus gêneros favoritos
+                            {subText}
                           </Text>
                         </View>
                         <View style={sectionStyles.countBadge}>
-                          <Text style={sectionStyles.countBadgeText}>{genreRecs.length}</Text>
+                          <Text style={sectionStyles.countBadgeText}>{recs.length}</Text>
                         </View>
                       </View>
                       <ScrollView
@@ -844,9 +836,9 @@ export const RecommendationsScreen = ({
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={sectionStyles.scrollContent}
                       >
-                        {genreRecs.map((movie) => (
+                        {recs.map((movie) => (
                           <RecCard
-                            key={movie.id}
+                            key={`${sourceId}_${movie.id}`}
                             movie={movie}
                             isWatched={isMovieWatched(movie.id)}
                             onWatch={handleWatchMovie}
@@ -858,11 +850,14 @@ export const RecommendationsScreen = ({
                   );
                 }
 
-                if (sourceId === '__trending_discover__') {
-                  const trendingRecs = recsBySource['__trending_discover__'] || [];
-                  if (trendingRecs.length === 0) return null;
+                // b) Seção de Mais Sucessos do Cinema (Trending)
+                if (String(sourceId).startsWith('__trending')) {
+                  const pageNum = String(sourceId).match(/p(\d+)/)?.[1];
+                  const subText = pageNum
+                    ? `Populares e aclamados (Página ${pageNum})`
+                    : 'Populares e aclamados recomendados para você';
                   return (
-                    <View key="__trending_discover__" style={sectionStyles.container}>
+                    <View key={sourceId} style={sectionStyles.container}>
                       <View style={sectionStyles.header}>
                         <View
                           style={[
@@ -875,11 +870,11 @@ export const RecommendationsScreen = ({
                         <View style={sectionStyles.headerText}>
                           <Text style={sectionStyles.sourceLabel}>Mais Sucessos do Cinema</Text>
                           <Text style={sectionStyles.sourceTitle} numberOfLines={1}>
-                            Populares e aclamados recomendados para você
+                            {subText}
                           </Text>
                         </View>
                         <View style={sectionStyles.countBadge}>
-                          <Text style={sectionStyles.countBadgeText}>{trendingRecs.length}</Text>
+                          <Text style={sectionStyles.countBadgeText}>{recs.length}</Text>
                         </View>
                       </View>
                       <ScrollView
@@ -887,9 +882,9 @@ export const RecommendationsScreen = ({
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={sectionStyles.scrollContent}
                       >
-                        {trendingRecs.map((movie) => (
+                        {recs.map((movie) => (
                           <RecCard
-                            key={movie.id}
+                            key={`${sourceId}_${movie.id}`}
                             movie={movie}
                             isWatched={isMovieWatched(movie.id)}
                             onWatch={handleWatchMovie}
@@ -901,13 +896,28 @@ export const RecommendationsScreen = ({
                   );
                 }
 
-                const sourceMovie = moviesForPattern.find((m) => String(m.id) === String(sourceId));
+                // c) Seção de Filme Assistido
+                let targetMovieId = sourceId;
+                let pageSuffix = '';
+                if (String(sourceId).startsWith('__watched_')) {
+                  const match = String(sourceId).match(/__watched_(\d+)_p(\d+)__/);
+                  if (match) {
+                    targetMovieId = match[1];
+                    pageSuffix = ` · Pág. ${match[2]}`;
+                  }
+                }
+
+                const sourceMovie =
+                  sourceMovieMap[String(targetMovieId)] ||
+                  moviesForPattern.find((m) => String(m.id) === String(targetMovieId));
+
                 if (!sourceMovie) return null;
+
                 return (
                   <SourceMovieSection
                     key={sourceId}
                     sourceMovie={sourceMovie}
-                    recommendations={recsBySource[sourceId] || []}
+                    recommendations={recs}
                     isMovieWatched={isMovieWatched}
                     onWatch={handleWatchMovie}
                     onOpenDetails={setDetailMovie}
