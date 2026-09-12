@@ -146,6 +146,7 @@ export const MovieCarousel = ({
         visible={!!selectedMovie}
         movie={selectedMovie}
         isWatched={isMovieWatched && selectedMovie ? isMovieWatched(selectedMovie.id) : false}
+        isMovieWatched={isMovieWatched}
         onClose={() => setSelectedMovie(null)}
         onPressWatch={onPressWatch}
       />

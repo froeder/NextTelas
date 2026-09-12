@@ -158,7 +158,11 @@ const SourceMovieSection = ({ sourceMovie, recommendations, isMovieWatched, onWa
   return (
     <View style={sectionStyles.container}>
       {/* Cabeçalho com mini-poster do filme origem */}
-      <View style={sectionStyles.header}>
+      <TouchableOpacity
+        style={sectionStyles.header}
+        onPress={() => onOpenDetails && onOpenDetails(sourceMovie)}
+        activeOpacity={0.7}
+      >
         <View style={sectionStyles.sourcePosterBox}>
           {sourcePoster ? (
             <Image source={{ uri: sourcePoster }} style={sectionStyles.sourcePoster} resizeMode="cover" />
@@ -178,7 +182,7 @@ const SourceMovieSection = ({ sourceMovie, recommendations, isMovieWatched, onWa
         <View style={sectionStyles.countBadge}>
           <Text style={sectionStyles.countBadgeText}>{recommendations.length}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Carrossel das recomendações */}
       <ScrollView
@@ -670,6 +674,7 @@ export const RecommendationsScreen = ({
         visible={!!detailMovie}
         movie={detailMovie}
         isWatched={detailMovie ? isMovieWatched(detailMovie.id) : false}
+        isMovieWatched={isMovieWatched}
         onClose={() => setDetailMovie(null)}
         onPressWatch={handleWatchMovie}
       />

@@ -34,22 +34,38 @@ export const MovieDetailsModal = ({
   onAddToWatchlist,
   onRemoveFromWatchlist,
   showRemoveButton = false,
+  isMovieWatched,
+  isMovieOnWatchlist,
+  onSelectMovie,
 }) => {
   const [details, setDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [similarMovies, setSimilarMovies] = useState([]);
+  const [movieHistory, setMovieHistory] = useState([]);
+  const scrollViewRef = React.useRef(null);
+
+  useEffect(() => {
+    if (visible && movie) {
+      setMovieHistory([movie]);
+    } else if (!visible) {
+      setMovieHistory([]);
+    }
+  }, [visible, movie?.id]);
+
+  const currentMovie = movieHistory.length > 0 ? movieHistory[movieHistory.length - 1] : movie;
 
   useEffect(() => {
     let isMounted = true;
-    if (visible && movie?.id) {
+    if (visible && currentMovie?.id) {
       const loadDetails = async () => {
         setLoadingDetails(true);
+        setDetails(null);
         setSimilarMovies([]);
         // Busca detalhes e semelhantes em paralelo
         const [detailResult, similarResult] = await Promise.allSettled([
-          getMovieDetails(movie.id),
-          getMovieRecommendations(movie.id, 1),
+          getMovieDetails(currentMovie.id),
+          getMovieRecommendations(currentMovie.id, 1),
         ]);
         if (isMounted) {
           if (detailResult.status === 'fulfilled') setDetails(detailResult.value.data);
@@ -68,32 +84,57 @@ export const MovieDetailsModal = ({
     return () => {
       isMounted = false;
     };
-  }, [visible, movie?.id]);
+  }, [visible, currentMovie?.id]);
 
-  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
+  const handleSelectSimilar = (simMovie) => {
+    setMovieHistory((prev) => [...prev, simMovie]);
+    if (onSelectMovie) {
+      onSelectMovie(simMovie);
+    }
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  const handleGoBack = () => {
+    if (movieHistory.length > 1) {
+      setMovieHistory((prev) => prev.slice(0, -1));
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
+    }
+  };
+
+  // Registra no histórico do navegador para fechar o modal ou voltar nível
   useEffect(() => {
     if (visible && onClose) {
-      const unregister = registerModalHistory(onClose);
+      const unregister = registerModalHistory(() => {
+        if (movieHistory.length > 1) {
+          handleGoBack();
+        } else {
+          onClose();
+        }
+      });
       return () => unregister();
     }
-  }, [visible, onClose]);
+  }, [visible, onClose, movieHistory.length]);
 
-  if (!movie) return null;
+  if (!currentMovie) return null;
 
-  const posterUri = getMoviePosterUrl(movie.poster_path);
-  const backdropUri = getMovieBackdropUrl(details?.backdrop_path || movie.backdrop_path);
+  const posterUri = getMoviePosterUrl(currentMovie.poster_path);
+  const backdropUri = getMovieBackdropUrl(details?.backdrop_path || currentMovie.backdrop_path);
   
-  const runtimeDisplay = formatRuntime(details?.runtime || movie.runtime);
-  const releaseYear = (movie.release_date || details?.release_date || '').split('-')[0];
-  const rating = (details?.vote_average || movie.vote_average)
-    ? Number(details?.vote_average || movie.vote_average).toFixed(1)
+  const runtimeDisplay = formatRuntime(details?.runtime || currentMovie.runtime);
+  const releaseYear = (currentMovie.release_date || details?.release_date || '').split('-')[0];
+  const rating = (details?.vote_average || currentMovie.vote_average)
+    ? Number(details?.vote_average || currentMovie.vote_average).toFixed(1)
     : null;
-  const voteCount = details?.vote_count || movie.vote_count;
+  const voteCount = details?.vote_count || currentMovie.vote_count;
 
   // Gêneros
   const genreNames = details?.genres
     ? details.genres.map((g) => g.name)
-    : getGenreNames(movie.genre_ids);
+    : getGenreNames(currentMovie.genre_ids);
 
   // Diretor
   const director = details?.credits?.crew?.find((c) => c.job === 'Director')?.name;
@@ -106,6 +147,14 @@ export const MovieDetailsModal = ({
     (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
   );
 
+  const isCurrentWatched = typeof isMovieWatched === 'function'
+    ? isMovieWatched(currentMovie.id)
+    : (currentMovie.id === movie?.id ? isWatched : (currentMovie.watched || false));
+
+  const isCurrentOnWatchlist = typeof isMovieOnWatchlist === 'function'
+    ? isMovieOnWatchlist(currentMovie.id)
+    : (currentMovie.id === movie?.id ? isOnWatchlist : (currentMovie.onWatchlist || false));
+
   const handleOpenTrailer = () => {
     if (trailer?.key) {
       const youtubeUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
@@ -114,10 +163,10 @@ export const MovieDetailsModal = ({
   };
 
   const handleWatchToggle = async () => {
-    if (loadingAction || isWatched || !onPressWatch) return;
+    if (loadingAction || isCurrentWatched || !onPressWatch) return;
     try {
       setLoadingAction(true);
-      await onPressWatch(movie);
+      await onPressWatch(currentMovie);
     } finally {
       setLoadingAction(false);
     }
@@ -127,7 +176,7 @@ export const MovieDetailsModal = ({
     if (loadingAction || !onPressRemove) return;
     try {
       setLoadingAction(true);
-      await onPressRemove(movie);
+      await onPressRemove(currentMovie);
       onClose();
     } finally {
       setLoadingAction(false);
@@ -138,10 +187,10 @@ export const MovieDetailsModal = ({
     if (loadingAction) return;
     try {
       setLoadingAction(true);
-      if (isOnWatchlist) {
-        if (onRemoveFromWatchlist) await onRemoveFromWatchlist(movie.id);
+      if (isCurrentOnWatchlist) {
+        if (onRemoveFromWatchlist) await onRemoveFromWatchlist(currentMovie.id);
       } else {
-        if (onAddToWatchlist) await onAddToWatchlist(movie);
+        if (onAddToWatchlist) await onAddToWatchlist(currentMovie);
       }
     } finally {
       setLoadingAction(false);
@@ -153,7 +202,13 @@ export const MovieDetailsModal = ({
       visible={visible}
       transparent={true}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (movieHistory.length > 1) {
+          handleGoBack();
+        } else {
+          onClose();
+        }
+      }}
     >
       <View style={styles.overlay}>
         <View style={styles.sheetContainer}>
@@ -165,6 +220,18 @@ export const MovieDetailsModal = ({
               <View style={styles.backdropFallback} />
             )}
             <View style={styles.backdropGradient} />
+
+            {/* Botão Voltar (se houver mais de 1 filme no histórico) */}
+            {movieHistory.length > 1 && (
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={handleGoBack}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.8}
+              >
+                <Icon name="arrow-back" size={18} color="#FFF" />
+              </TouchableOpacity>
+            )}
 
             {/* Botão Fechar */}
             <TouchableOpacity
@@ -178,6 +245,7 @@ export const MovieDetailsModal = ({
           </View>
 
           <ScrollView
+            ref={scrollViewRef}
             style={styles.scrollContent}
             contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
@@ -195,7 +263,7 @@ export const MovieDetailsModal = ({
               </View>
 
               <View style={styles.movieHeaderDetails}>
-                <Text style={styles.movieTitle}>{movie.title}</Text>
+                <Text style={styles.movieTitle}>{currentMovie.title}</Text>
 
                 {details?.tagline ? (
                   <Text style={styles.tagline}>"{details.tagline}"</Text>
@@ -263,7 +331,7 @@ export const MovieDetailsModal = ({
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Sinopse</Text>
               <Text style={styles.overviewText}>
-                {details?.overview || movie.overview || 'Sinopse não informada em português.'}
+                {details?.overview || currentMovie.overview || 'Sinopse não informada em português.'}
               </Text>
             </View>
 
@@ -314,7 +382,12 @@ export const MovieDetailsModal = ({
                       : null;
                     const simYear = (sim.release_date || '').split('-')[0];
                     return (
-                      <View key={sim.id} style={styles.simCard}>
+                      <TouchableOpacity
+                        key={sim.id}
+                        style={styles.simCard}
+                        onPress={() => handleSelectSimilar(sim)}
+                        activeOpacity={0.7}
+                      >
                         <View style={styles.simPosterBox}>
                           {simPoster ? (
                             <Image
@@ -339,7 +412,10 @@ export const MovieDetailsModal = ({
                           {onPressWatch && (
                             <TouchableOpacity
                               style={styles.simWatchBtn}
-                              onPress={() => onPressWatch(sim)}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                onPressWatch(sim);
+                              }}
                               activeOpacity={0.8}
                             >
                               <Icon name="add" size={13} color="#FFF" />
@@ -353,7 +429,7 @@ export const MovieDetailsModal = ({
                         {simYear ? (
                           <Text style={styles.simYear}>{simYear}</Text>
                         ) : null}
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
@@ -393,10 +469,10 @@ export const MovieDetailsModal = ({
                 <TouchableOpacity
                   style={[
                     styles.watchActionBtn,
-                    isWatched && styles.watchActionBtnActive,
+                    isCurrentWatched && styles.watchActionBtnActive,
                   ]}
                   onPress={handleWatchToggle}
-                  disabled={isWatched || loadingAction}
+                  disabled={isCurrentWatched || loadingAction}
                   activeOpacity={0.8}
                 >
                   {loadingAction ? (
@@ -404,7 +480,7 @@ export const MovieDetailsModal = ({
                       <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
                       <Text style={styles.watchActionBtnText}>Adicionando...</Text>
                     </View>
-                  ) : isWatched ? (
+                  ) : isCurrentWatched ? (
                     <View style={styles.actionContentRow}>
                       <Icon name="checkmark-circle" size={18} color={theme.colors.success} style={{ marginRight: 8 }} />
                       <Text style={[styles.watchActionBtnText, { color: theme.colors.success }]}>
@@ -420,28 +496,28 @@ export const MovieDetailsModal = ({
                 </TouchableOpacity>
 
                 {/* Botão Quero Assistir (somente quando não assistiu ainda) */}
-                {!isWatched && (onAddToWatchlist || onRemoveFromWatchlist) && (
+                {!isCurrentWatched && (onAddToWatchlist || onRemoveFromWatchlist) && (
                   <TouchableOpacity
                     style={[
                       styles.watchlistActionBtn,
-                      isOnWatchlist && styles.watchlistActionBtnActive,
+                      isCurrentOnWatchlist && styles.watchlistActionBtnActive,
                     ]}
                     onPress={handleWatchlistToggle}
                     disabled={loadingAction}
                     activeOpacity={0.8}
                   >
                     <Icon
-                      name={isOnWatchlist ? 'bookmark' : 'bookmark-outline'}
+                      name={isCurrentOnWatchlist ? 'bookmark' : 'bookmark-outline'}
                       size={18}
-                      color={isOnWatchlist ? theme.colors.accent : theme.colors.textSecondary}
+                      color={isCurrentOnWatchlist ? theme.colors.accent : theme.colors.textSecondary}
                     />
                     <Text
                       style={[
                         styles.watchlistActionBtnText,
-                        isOnWatchlist && styles.watchlistActionBtnTextActive,
+                        isCurrentOnWatchlist && styles.watchlistActionBtnTextActive,
                       ]}
                     >
-                      {isOnWatchlist ? 'Na Lista' : 'Quero Assistir'}
+                      {isCurrentOnWatchlist ? 'Na Lista' : 'Quero Assistir'}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -496,6 +572,20 @@ const styles = StyleSheet.create({
     right: 0,
     height: 90,
     backgroundColor: 'rgba(21, 23, 34, 0.95)',
+  },
+  backBtn: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(11, 12, 18, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   closeBtn: {
     position: 'absolute',

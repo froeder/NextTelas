@@ -34,6 +34,7 @@ import {
   Compass,
   Activity,
   Zap,
+  ArrowLeft,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -46,6 +47,8 @@ const ICON_MAP = {
   'play': Play,
   'play-circle': Play,
   'tv': Tv,
+  'arrow-back': ArrowLeft,
+  'arrow-left': ArrowLeft,
 
   // Navegação e Ações
   'search': Search,
