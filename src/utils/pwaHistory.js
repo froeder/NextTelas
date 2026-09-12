@@ -75,11 +75,15 @@ export const registerModalHistory = (onClose) => {
 
     // Se o modal foi fechado por clique na UI (e não pelo gesto de voltar), desfaz a entrada no history
     if (!isPoppingState) {
+      isPoppingState = true;
       try {
         if (window.history.state && window.history.state.modalOpen) {
           window.history.back();
         }
       } catch (_) {}
+      setTimeout(() => {
+        isPoppingState = false;
+      }, 100);
     }
   };
 };
