@@ -266,7 +266,7 @@ export const EraRecommendationsModal = ({
                         ) : null}
 
                         {genreNames.map((gName, idx) => (
-                          <GenreBadge key={idx} genreName={gName} />
+                          <GenreBadge key={idx} name={gName} />
                         ))}
                       </View>
 

@@ -2,13 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '../utils/theme';
 
-export const GenreBadge = ({ name, active = false, size = 'sm' }) => {
-  if (!name) return null;
+export const GenreBadge = ({ name, genreName, active = false, size = 'sm' }) => {
+  const displayLabel = name || genreName;
+  if (!displayLabel) return null;
 
   return (
     <View style={[styles.badge, active && styles.activeBadge, size === 'xs' && styles.smallBadge]}>
       <Text style={[styles.text, active && styles.activeText, size === 'xs' && styles.smallText]}>
-        {name}
+        {displayLabel}
       </Text>
     </View>
   );

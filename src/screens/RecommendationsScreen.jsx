@@ -273,11 +273,14 @@ const sectionStyles = StyleSheet.create({
 export const RecommendationsScreen = ({
   user,
   watchedMovies = [],
+  watchlist = [],
   customLists = [],
   selectedListId = 'all',
   onSelectRecommendationList,
   onNavigateToSearch,
   onAddWatched,
+  onAddToWatchlist,
+  onRemoveFromWatchlist,
 }) => {
   // { movieId: [rec, rec, ...] }
   const [recsBySource, setRecsBySource] = useState({});
@@ -318,7 +321,12 @@ export const RecommendationsScreen = ({
     return new Set(watchedMovies.map((m) => String(m.id)));
   }, [watchedMovies]);
 
+  const watchlistIdsSet = React.useMemo(() => {
+    return new Set(watchlist.map((m) => String(m.id)));
+  }, [watchlist]);
+
   const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
+  const isMovieOnWatchlist = (movieId) => watchlistIdsSet.has(String(movieId));
 
   // Array 'recomendados' com TODOS os filmes recomendados únicos (sem repetidos)
   const recomendados = React.useMemo(() => {
@@ -986,9 +994,13 @@ export const RecommendationsScreen = ({
         visible={!!detailMovie}
         movie={detailMovie}
         isWatched={detailMovie ? isMovieWatched(detailMovie.id) : false}
+        isOnWatchlist={detailMovie ? isMovieOnWatchlist(detailMovie.id) : false}
         isMovieWatched={isMovieWatched}
+        isMovieOnWatchlist={isMovieOnWatchlist}
         onClose={() => setDetailMovie(null)}
         onPressWatch={handleWatchMovie}
+        onAddToWatchlist={onAddToWatchlist}
+        onRemoveFromWatchlist={onRemoveFromWatchlist}
       />
     </>
   );

@@ -290,11 +290,14 @@ export default function App() {
           <RecommendationsScreen
             user={user}
             watchedMovies={watchedMovies}
+            watchlist={watchlist}
             customLists={customLists}
             selectedListId={selectedListIdForRecommendations}
             onSelectRecommendationList={setSelectedListIdForRecommendations}
             onNavigateToSearch={() => setActiveTab('search')}
             onAddWatched={handleAddWatched}
+            onAddToWatchlist={handleAddToWatchlist}
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
           />
         );
       case 'search':
@@ -343,11 +346,14 @@ export default function App() {
           <RecommendationsScreen
             user={user}
             watchedMovies={watchedMovies}
+            watchlist={watchlist}
             customLists={customLists}
             selectedListId={selectedListIdForRecommendations}
             onSelectRecommendationList={setSelectedListIdForRecommendations}
             onNavigateToSearch={() => setActiveTab('search')}
             onAddWatched={handleAddWatched}
+            onAddToWatchlist={handleAddToWatchlist}
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
           />
         );
     }

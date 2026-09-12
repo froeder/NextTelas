@@ -1025,10 +1025,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: theme.colors.text,
   },
+  decadeNameActive: {
+    color: '#60A5FA',
+  },
   decadeCount: {
     fontSize: 10,
     color: theme.colors.textMuted,
     marginTop: 2,
+  },
+  decadeCountActive: {
+    color: '#93C5FD',
   },
 
   extremesRow: {

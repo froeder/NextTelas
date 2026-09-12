@@ -35,6 +35,9 @@ import {
   Activity,
   Zap,
   ArrowLeft,
+  Bookmark,
+  BookmarkCheck,
+  Heart,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -50,7 +53,7 @@ const ICON_MAP = {
   'arrow-back': ArrowLeft,
   'arrow-left': ArrowLeft,
 
-  // Navegação e Ações
+  // Navegação, Watchlist e Ações
   'search': Search,
   'search-outline': Search,
   'star': Star,
@@ -61,21 +64,34 @@ const ICON_MAP = {
   'add': Plus,
   'add-circle-outline': PlusCircle,
   'close-circle': XCircle,
+  'close-outline': XCircle,
   'close': X,
   'external-link': ExternalLink,
   'compass': Compass,
+  'bookmark': BookmarkCheck,
+  'bookmark-outline': Bookmark,
+  'bookmark-check': BookmarkCheck,
+  'heart': Heart,
+  'heart-outline': Heart,
 
   // Detalhes do Filme & Tempo
   'clock': Clock,
+  'time': Clock,
   'time-outline': Clock,
   'calendar': Calendar,
+  'calendar-outline': Calendar,
 
   // Autenticação & Usuário
+  'mail': Mail,
   'mail-outline': Mail,
   'lock-closed-outline': Lock,
+  'eye': Eye,
   'eye-outline': Eye,
+  'eye-off': EyeOff,
   'eye-off-outline': EyeOff,
+  'user': User,
   'person-circle-outline': User,
+  'log-out': LogOut,
   'log-out-outline': LogOut,
 
   // Informações & Gráficos
