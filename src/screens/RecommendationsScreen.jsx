@@ -293,11 +293,26 @@ export const RecommendationsScreen = ({
   const activeListObj = customLists.find((l) => l.id === selectedListId);
   const activeListName = selectedListId === 'all' ? null : activeListObj?.name;
 
-  const moviesForPattern = selectedListId === 'all'
-    ? watchedMovies
-    : watchedMovies.filter((m) => Array.isArray(m.listIds) && m.listIds.includes(selectedListId));
+  const moviesForPattern = React.useMemo(() => {
+    return selectedListId === 'all'
+      ? watchedMovies
+      : watchedMovies.filter((m) => Array.isArray(m.listIds) && m.listIds.includes(selectedListId));
+  }, [watchedMovies, selectedListId]);
 
-  const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
+  const moviesKey = React.useMemo(() => {
+    return (
+      selectedListId +
+      '_' +
+      watchedMovies.length +
+      '_' +
+      moviesForPattern.map((m) => String(m.id)).join(',')
+    );
+  }, [selectedListId, watchedMovies.length, moviesForPattern]);
+
+  const watchedIdsSet = React.useMemo(() => {
+    return new Set(watchedMovies.map((m) => String(m.id)));
+  }, [watchedMovies]);
+
   const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
 
   // Array 'recomendados' com TODOS os filmes recomendados únicos (sem repetidos)
@@ -393,11 +408,11 @@ export const RecommendationsScreen = ({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [moviesForPattern, watchedMovies]);
+  }, [moviesForPattern, watchedMovies, watchedIdsSet]);
 
   useEffect(() => {
     fetchRecommendations();
-  }, [fetchRecommendations]);
+  }, [moviesKey]);
 
   const handleRefresh = () => {
     setRefreshing(true);
