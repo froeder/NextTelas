@@ -33,7 +33,7 @@ export const EraRecommendationsModal = ({
   onAddToWatchlist,
   onRemoveFromWatchlist,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState([]);
   const [eraWatchedMovies, setEraWatchedMovies] = useState([]);
   const [selectedMovieForDetails, setSelectedMovieForDetails] = useState(null);
@@ -47,6 +47,7 @@ export const EraRecommendationsModal = ({
   // Registra navegação para fechar com o botão Voltar do navegador/PWA (apenas quando visible altera)
   useEffect(() => {
     if (visible) {
+      setLoading(true);
       const unregister = registerModalHistory(() => {
         if (onCloseRef.current) onCloseRef.current();
       });
@@ -74,15 +75,15 @@ export const EraRecommendationsModal = ({
 
       // 2. Extrai os gêneros principais dos filmes assistidos nesta era
       const { topGenresDetails } = extractTopGenres(watchedInEra, 3);
-      const topGenreIds = topGenresDetails.map((g) => g.id);
+      const topGenreIds = (topGenresDetails || []).map((g) => g.id);
 
       const seedMovies = watchedInEra.slice(0, 3);
 
       // 3. Busca em PARALELO todas as fontes para tempo de resposta super rápido (< 500ms)
       const [discoverRes, discoverFallback, ...recResults] = await Promise.all([
-        discoverMoviesByEra(decadeKey, topGenreIds, 1),
-        discoverMoviesByEra(decadeKey, [], 1),
-        ...seedMovies.map((m) => getMovieRecommendations(m.id, 1)),
+        discoverMoviesByEra(decadeKey, topGenreIds, 1).catch(() => ({ results: [] })),
+        discoverMoviesByEra(decadeKey, [], 1).catch(() => ({ results: [] })),
+        ...seedMovies.map((m) => getMovieRecommendations(m.id, 1).catch(() => ({ results: [] }))),
       ]);
 
       const candidateMap = new Map();
@@ -117,10 +118,14 @@ export const EraRecommendationsModal = ({
       });
 
       // 4. REGRA RÍGIDA: Filtra estritamente filmes que pertencem ÀQUELA ERA e não assistidos
-      const finalRecs = Array.from(candidateMap.values())
+      let finalRecs = Array.from(candidateMap.values())
         .filter((m) => isMovieInDecade(m.release_date, decadeKey))
         .filter((m) => !watchedIdsSet.has(String(m.id)))
         .sort((a, b) => (Number(b.vote_average) || 0) - (Number(a.vote_average) || 0));
+
+      if (finalRecs.length === 0 && candidateMap.size > 0) {
+        finalRecs = Array.from(candidateMap.values()).filter((m) => !watchedIdsSet.has(String(m.id)));
+      }
 
       setRecommendations(finalRecs);
     } catch (err) {
