@@ -20,6 +20,7 @@ import {
   getMovieRecommendations,
   getTrendingOrPopularMovies,
   getMoviePosterUrl,
+  discoverMoviesByGenres,
 } from '../services/tmdbService';
 import { getGenreNames } from '../utils/tmdbGenres';
 import { addWatchedMovie } from '../services/firestoreService';
@@ -290,6 +291,8 @@ export const RecommendationsScreen = ({
   const [topGenresInfo, setTopGenresInfo] = useState({ topGenreIds: [], topGenresDetails: [], totalWatched: 0 });
   const [detailMovie, setDetailMovie] = useState(null);
 
+  const [loadedMoreBadge, setLoadedMoreBadge] = useState(null);
+
   const activeListObj = customLists.find((l) => l.id === selectedListId);
   const activeListName = selectedListId === 'all' ? null : activeListObj?.name;
 
@@ -347,6 +350,7 @@ export const RecommendationsScreen = ({
 
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
+    setLoadedMoreBadge(null);
     try {
       // Extrai padrões de gênero para o InsightBanner
       const patternResult = extractTopGenres(moviesForPattern, 3);
@@ -419,18 +423,24 @@ export const RecommendationsScreen = ({
     fetchRecommendations();
   };
 
-  // Carrega mais recomendações (próxima página da TMDb por filme-origem)
+  // Carrega mais recomendações (expande profundidade TMDb + busca novos filmes-origem da lista + descoberta por gênero)
   const handleLoadMore = async () => {
     if (loadingMore || loading) return;
     setLoadingMore(true);
+    setLoadedMoreBadge(null);
     const nextPage = currentPage + 1;
-    try {
-      const sourceCandidates = [...moviesForPattern]
-        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-        .slice(0, MAX_SOURCE_MOVIES);
 
-      const results = await Promise.allSettled(
-        sourceCandidates.map((src) => getMovieRecommendations(src.id, nextPage))
+    try {
+      const sortedWatched = [...moviesForPattern].sort(
+        (a, b) => (b.vote_average || 0) - (a.vote_average || 0)
+      );
+
+      // Fontes já exibidas (ex: 0..12)
+      const currentSources = sortedWatched.slice(0, currentPage * MAX_SOURCE_MOVIES);
+      // Próximo bloco de filmes-origem da lista do usuário (ex: 12..24)
+      const nextSources = sortedWatched.slice(
+        currentPage * MAX_SOURCE_MOVIES,
+        (currentPage + 1) * MAX_SOURCE_MOVIES
       );
 
       const allCurrentIds = new Set([
@@ -438,16 +448,26 @@ export const RecommendationsScreen = ({
         ...Object.values(recsBySource).flat().map((m) => String(m.id)),
       ]);
 
-      let anyNewFound = false;
+      const topGenreIds = topGenresInfo.topGenreIds || [];
+
+      // Requisições paralelas
+      const [deepResults, newSourceResults, genreDiscoverResults] = await Promise.all([
+        Promise.allSettled(currentSources.map((src) => getMovieRecommendations(src.id, nextPage))),
+        Promise.allSettled(nextSources.map((src) => getMovieRecommendations(src.id, 1))),
+        discoverMoviesByGenres(topGenreIds, nextPage).catch(() => ({ results: [] })),
+      ]);
+
+      let totalNewAdded = 0;
       let anyHasMore = false;
 
       setRecsBySource((prev) => {
         const updated = { ...prev };
         const newSourceIds = [];
 
-        results.forEach((result, idx) => {
-          const sourceMovie = sourceCandidates[idx];
-          if (result.status !== 'fulfilled') return;
+        // a) Recomendações mais profundas das fontes atuais
+        deepResults.forEach((result, idx) => {
+          const sourceMovie = currentSources[idx];
+          if (result.status !== 'fulfilled' || !sourceMovie) return;
 
           const recs = result.value.results || [];
           const totalPages = result.value.total_pages || 1;
@@ -457,13 +477,42 @@ export const RecommendationsScreen = ({
           fresh.forEach((m) => allCurrentIds.add(String(m.id)));
 
           if (fresh.length > 0) {
-            anyNewFound = true;
-            // Acumula, mas limita a 12 por seção para não sobrecarregar a UI
+            totalNewAdded += fresh.length;
             const existing = updated[sourceMovie.id] || [];
-            updated[sourceMovie.id] = [...existing, ...fresh].slice(0, 12);
+            updated[sourceMovie.id] = [...existing, ...fresh].slice(0, 20);
+          }
+        });
+
+        // b) Recomendações dos novos filmes-origem da coleção do usuário
+        newSourceResults.forEach((result, idx) => {
+          const sourceMovie = nextSources[idx];
+          if (result.status !== 'fulfilled' || !sourceMovie) return;
+
+          const recs = result.value.results || [];
+          const totalPages = result.value.total_pages || 1;
+          if (1 < totalPages) anyHasMore = true;
+
+          const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
+          fresh.forEach((m) => allCurrentIds.add(String(m.id)));
+
+          if (fresh.length > 0) {
+            totalNewAdded += fresh.length;
+            updated[sourceMovie.id] = fresh.slice(0, 20);
             newSourceIds.push(sourceMovie.id);
           }
         });
+
+        // c) Descobertas pelos gêneros preferidos
+        const genreRecs = genreDiscoverResults?.results || [];
+        const freshGenreRecs = genreRecs.filter((m) => !allCurrentIds.has(String(m.id)));
+        if (freshGenreRecs.length > 0) {
+          totalNewAdded += freshGenreRecs.length;
+          freshGenreRecs.forEach((m) => allCurrentIds.add(String(m.id)));
+          const genreKey = '__genre_discover__';
+          const existingGenre = updated[genreKey] || [];
+          updated[genreKey] = [...existingGenre, ...freshGenreRecs].slice(0, 20);
+          newSourceIds.push(genreKey);
+        }
 
         if (newSourceIds.length > 0) {
           setSourceOrder((prevOrder) => {
@@ -476,8 +525,12 @@ export const RecommendationsScreen = ({
         return updated;
       });
 
+      if (totalNewAdded > 0) {
+        setLoadedMoreBadge(`✨ +${totalNewAdded} novas sugestões e descobertas adicionadas!`);
+      }
+
       setCurrentPage(nextPage);
-      setHasMore(anyHasMore && anyNewFound);
+      setHasMore(anyHasMore || nextSources.length > 0);
     } catch (err) {
       console.error('Erro ao carregar mais:', err);
     } finally {
@@ -705,6 +758,49 @@ export const RecommendationsScreen = ({
             ) : (
               /* Uma seção por filme assistido */
               sourceOrder.map((sourceId) => {
+                if (sourceId === '__genre_discover__') {
+                  const genreRecs = recsBySource['__genre_discover__'] || [];
+                  if (genreRecs.length === 0) return null;
+                  return (
+                    <View key="__genre_discover__" style={sectionStyles.container}>
+                      <View style={sectionStyles.header}>
+                        <View
+                          style={[
+                            sectionStyles.sourcePosterBox,
+                            { backgroundColor: 'rgba(96, 165, 250, 0.15)', justifyContent: 'center', alignItems: 'center' },
+                          ]}
+                        >
+                          <Icon name="sparkles" size={18} color="#60A5FA" />
+                        </View>
+                        <View style={sectionStyles.headerText}>
+                          <Text style={sectionStyles.sourceLabel}>Descoberta por Gênero</Text>
+                          <Text style={sectionStyles.sourceTitle} numberOfLines={1}>
+                            Baseada nos seus gêneros favoritos
+                          </Text>
+                        </View>
+                        <View style={sectionStyles.countBadge}>
+                          <Text style={sectionStyles.countBadgeText}>{genreRecs.length}</Text>
+                        </View>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={sectionStyles.scrollContent}
+                      >
+                        {genreRecs.map((movie) => (
+                          <RecCard
+                            key={movie.id}
+                            movie={movie}
+                            isWatched={isMovieWatched(movie.id)}
+                            onWatch={handleWatchMovie}
+                            onOpenDetails={setDetailMovie}
+                          />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  );
+                }
+
                 const sourceMovie = moviesForPattern.find((m) => String(m.id) === String(sourceId));
                 if (!sourceMovie) return null;
                 return (
@@ -720,6 +816,14 @@ export const RecommendationsScreen = ({
               })
             )}
 
+            {/* Banner toast indicando novas adições */}
+            {loadedMoreBadge && (
+              <View style={styles.loadedMoreToast}>
+                <Icon name="sparkles" size={14} color="#60A5FA" style={{ marginRight: 6 }} />
+                <Text style={styles.loadedMoreToastText}>{loadedMoreBadge}</Text>
+              </View>
+            )}
+
             {/* Botão de Carregar Mais no rodapé */}
             {!hasTrending && (
               <View style={styles.loadMoreWrapper}>
@@ -733,12 +837,12 @@ export const RecommendationsScreen = ({
                     {loadingMore ? (
                       <>
                         <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.loadMoreBtnText}>Buscando mais...</Text>
+                        <Text style={styles.loadMoreBtnText}>Buscando mais recomendações e seções...</Text>
                       </>
                     ) : (
                       <>
                         <Icon name="refresh" size={16} color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.loadMoreBtnText}>Buscar Mais Recomendações</Text>
+                        <Text style={styles.loadMoreBtnText}>Buscar Mais Recomendações e Seções</Text>
                         {currentPage > 1 && (
                           <View style={styles.pageChip}>
                             <Text style={styles.pageChipText}>p.{currentPage + 1}</Text>
@@ -1051,5 +1155,23 @@ const styles = StyleSheet.create({
     color: theme.colors.success,
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
+  },
+  loadedMoreToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.35)',
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  loadedMoreToastText: {
+    color: '#60A5FA',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
