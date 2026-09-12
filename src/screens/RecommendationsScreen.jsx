@@ -357,7 +357,9 @@ export const RecommendationsScreen = ({
   const hasMoreRef = React.useRef(hasMore);
   hasMoreRef.current = hasMore;
 
-  // Carrega mais recomendações (Scroll Infinito: profundidade TMDb + próximos filmes assistidos + gêneros favoritos)
+  const contentHeightRef = React.useRef(0);
+
+  // Carrega mais recomendações (Scroll Infinito: profundidade TMDb + próximos filmes assistidos + gêneros + failsafe de em alta)
   const handleLoadMore = useCallback(async () => {
     if (loadingMoreRef.current || loadingRef.current) return;
     setLoadingMore(true);
@@ -399,7 +401,18 @@ export const RecommendationsScreen = ({
       ]);
 
       let totalNewAdded = 0;
-      let anyHasMore = false;
+
+      // Failsafe: se as buscas paralelas trouxerem menos de 6 novos filmes, busca mais populares
+      let fallbackRecs = [];
+      const primaryNewCount = 
+        deepResults.reduce((acc, r) => acc + (r.value?.results?.length || 0), 0) +
+        newSourceResults.reduce((acc, r) => acc + (r.value?.results?.length || 0), 0) +
+        (genreDiscoverResults?.results?.length || 0);
+
+      if (primaryNewCount < 6) {
+        const fallbackRes = await getTrendingOrPopularMovies(nextPage).catch(() => ({ results: [] }));
+        fallbackRecs = fallbackRes?.results || [];
+      }
 
       setRecsBySource((prev) => {
         const updated = { ...prev };
@@ -411,9 +424,6 @@ export const RecommendationsScreen = ({
           if (result.status !== 'fulfilled' || !sourceMovie) return;
 
           const recs = result.value.results || [];
-          const totalPages = result.value.total_pages || 1;
-          if (nextPage < totalPages) anyHasMore = true;
-
           const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
           fresh.forEach((m) => allCurrentIds.add(String(m.id)));
 
@@ -430,9 +440,6 @@ export const RecommendationsScreen = ({
           if (result.status !== 'fulfilled' || !sourceMovie) return;
 
           const recs = result.value.results || [];
-          const totalPages = result.value.total_pages || 1;
-          if (1 < totalPages) anyHasMore = true;
-
           const fresh = recs.filter((m) => !allCurrentIds.has(String(m.id)));
           fresh.forEach((m) => allCurrentIds.add(String(m.id)));
 
@@ -453,6 +460,19 @@ export const RecommendationsScreen = ({
           const existingGenre = updated[genreKey] || [];
           updated[genreKey] = [...existingGenre, ...freshGenreRecs].slice(0, 20);
           newSourceIds.push(genreKey);
+        }
+
+        // d) Failsafe garantido: adiciona filmes em alta se houver poucas novidades
+        if (fallbackRecs.length > 0) {
+          const freshFallback = fallbackRecs.filter((m) => !allCurrentIds.has(String(m.id)));
+          if (freshFallback.length > 0) {
+            totalNewAdded += freshFallback.length;
+            freshFallback.forEach((m) => allCurrentIds.add(String(m.id)));
+            const fallbackKey = '__trending_discover__';
+            const existingFallback = updated[fallbackKey] || [];
+            updated[fallbackKey] = [...existingFallback, ...freshFallback].slice(0, 20);
+            newSourceIds.push(fallbackKey);
+          }
         }
 
         if (newSourceIds.length > 0) {
@@ -485,14 +505,14 @@ export const RecommendationsScreen = ({
 
   const handleScroll = useCallback((event) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent || {};
-    if (!layoutMeasurement || !contentSize) return;
-
-    const height = layoutMeasurement.height || 0;
+    const height = layoutMeasurement?.height || 0;
     const offsetY = contentOffset?.y || 0;
-    const totalHeight = contentSize.height || 0;
+    const totalHeight = contentSize?.height || contentHeightRef.current || 0;
 
-    // Quando o usuário rola até 500px antes do fim da página
-    const isNearBottom = height + offsetY >= totalHeight - 500;
+    if (totalHeight === 0) return;
+
+    // Quando o usuário rola até 600px antes do fim da página
+    const isNearBottom = height + offsetY >= totalHeight - 600;
 
     if (isNearBottom && hasMoreRef.current && !loadingMoreRef.current && !loadingRef.current) {
       if (handleLoadMoreRef.current) {
@@ -604,6 +624,9 @@ export const RecommendationsScreen = ({
         style={styles.container}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        onContentSizeChange={(w, h) => {
+          contentHeightRef.current = h;
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -822,6 +845,49 @@ export const RecommendationsScreen = ({
                         contentContainerStyle={sectionStyles.scrollContent}
                       >
                         {genreRecs.map((movie) => (
+                          <RecCard
+                            key={movie.id}
+                            movie={movie}
+                            isWatched={isMovieWatched(movie.id)}
+                            onWatch={handleWatchMovie}
+                            onOpenDetails={setDetailMovie}
+                          />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  );
+                }
+
+                if (sourceId === '__trending_discover__') {
+                  const trendingRecs = recsBySource['__trending_discover__'] || [];
+                  if (trendingRecs.length === 0) return null;
+                  return (
+                    <View key="__trending_discover__" style={sectionStyles.container}>
+                      <View style={sectionStyles.header}>
+                        <View
+                          style={[
+                            sectionStyles.sourcePosterBox,
+                            { backgroundColor: 'rgba(255, 184, 0, 0.15)', justifyContent: 'center', alignItems: 'center' },
+                          ]}
+                        >
+                          <Icon name="star" size={18} color="#FFB800" />
+                        </View>
+                        <View style={sectionStyles.headerText}>
+                          <Text style={sectionStyles.sourceLabel}>Mais Sucessos do Cinema</Text>
+                          <Text style={sectionStyles.sourceTitle} numberOfLines={1}>
+                            Populares e aclamados recomendados para você
+                          </Text>
+                        </View>
+                        <View style={sectionStyles.countBadge}>
+                          <Text style={sectionStyles.countBadgeText}>{trendingRecs.length}</Text>
+                        </View>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={sectionStyles.scrollContent}
+                      >
+                        {trendingRecs.map((movie) => (
                           <RecCard
                             key={movie.id}
                             movie={movie}
