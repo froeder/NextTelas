@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
@@ -25,8 +26,14 @@ export const StatsScreen = ({
   // Lista ativa para filtrar as estatísticas ('all' ou id da lista)
   const [selectedListId, setSelectedListId] = useState('all');
 
-  // Década selecionada para exibir o modal de recomendações
+  // Década selecionada para exibir o modal de recomendações e estado de carregamento
   const [selectedDecadeModal, setSelectedDecadeModal] = useState(null);
+  const [loadingDecade, setLoadingDecade] = useState(null);
+
+  const handleOpenDecade = (decade) => {
+    setLoadingDecade(decade);
+    setSelectedDecadeModal(decade);
+  };
 
   // Filtra filmes com base na lista selecionada
   const filteredMovies = (selectedListId === 'all'
@@ -473,22 +480,33 @@ export const StatsScreen = ({
                 </View>
 
                 <View style={styles.decadeGrid}>
-                  {sortedDecades.map(([decade, count]) => (
-                    <TouchableOpacity
-                      key={decade}
-                      style={styles.decadeCard}
-                      activeOpacity={0.7}
-                      onPress={() => setSelectedDecadeModal(decade)}
-                    >
-                      <View style={styles.decadeCardHeader} pointerEvents="none">
-                        <Text style={styles.decadeName}>{decade}</Text>
-                        <Icon name="sparkles" size={10} color="#60A5FA" />
-                      </View>
-                      <Text style={styles.decadeCount} pointerEvents="none">
-                        {count} {count === 1 ? 'filme' : 'filmes'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {sortedDecades.map(([decade, count]) => {
+                    const isLoadingThisDecade = loadingDecade === decade;
+
+                    return (
+                      <TouchableOpacity
+                        key={decade}
+                        style={[
+                          styles.decadeCard,
+                          isLoadingThisDecade && styles.decadeCardActive,
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={() => handleOpenDecade(decade)}
+                      >
+                        <View style={styles.decadeCardHeader} pointerEvents="none">
+                          <Text style={styles.decadeName}>{decade}</Text>
+                          {isLoadingThisDecade ? (
+                            <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 2 }} />
+                          ) : (
+                            <Icon name="sparkles" size={10} color="#60A5FA" />
+                          )}
+                        </View>
+                        <Text style={styles.decadeCount} pointerEvents="none">
+                          {isLoadingThisDecade ? 'Carregando...' : `${count} ${count === 1 ? 'filme' : 'filmes'}`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 {/* Destaque Filme Mais Antigo e Mais Recente */}
@@ -596,7 +614,10 @@ export const StatsScreen = ({
           decadeKey={selectedDecadeModal}
           watchedMovies={watchedMovies}
           watchlist={watchlist}
-          onClose={() => setSelectedDecadeModal(null)}
+          onClose={() => {
+            setSelectedDecadeModal(null);
+            setLoadingDecade(null);
+          }}
           onAddWatched={onAddWatched}
           onAddToWatchlist={onAddToWatchlist}
           onRemoveFromWatchlist={onRemoveFromWatchlist}
@@ -1000,6 +1021,10 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.surfaceBorder,
     minWidth: 85,
     alignItems: 'center',
+  },
+  decadeCardActive: {
+    borderColor: '#60A5FA',
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
   },
   decadeCardHeader: {
     flexDirection: 'row',

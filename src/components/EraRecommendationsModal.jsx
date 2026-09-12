@@ -69,28 +69,19 @@ export const EraRecommendationsModal = ({
       const { topGenresDetails } = extractTopGenres(watchedInEra, 3);
       const topGenreIds = topGenresDetails.map((g) => g.id);
 
+      const seedMovies = watchedInEra.slice(0, 3);
+
+      // 3. Busca em PARALELO todas as fontes para tempo de resposta super rápido (< 500ms)
+      const [discoverRes, discoverFallback, ...recResults] = await Promise.all([
+        discoverMoviesByEra(decadeKey, topGenreIds, 1),
+        discoverMoviesByEra(decadeKey, [], 1),
+        ...seedMovies.map((m) => getMovieRecommendations(m.id, 1)),
+      ]);
+
       const candidateMap = new Map();
 
-      // 3. Se houver filmes assistidos nessa era, busca recomendações diretas na TMDb para até 4 filmes
-      if (watchedInEra.length > 0) {
-        const seedMovies = watchedInEra.slice(0, 4);
-        const recPromises = seedMovies.map((m) => getMovieRecommendations(m.id, 1));
-        const recResults = await Promise.all(recPromises);
-
-        recResults.forEach((res) => {
-          if (res.results) {
-            res.results.forEach((m) => {
-              if (m?.id && !watchedIdsSet.has(String(m.id))) {
-                candidateMap.set(String(m.id), m);
-              }
-            });
-          }
-        });
-      }
-
-      // 4. Busca no endpoint /discover/movie por era + gêneros de preferência nessa era
-      const discoverRes = await discoverMoviesByEra(decadeKey, topGenreIds, 1);
-      if (discoverRes.results) {
+      // Processa descobertas baseadas nos gêneros da era
+      if (discoverRes?.results) {
         discoverRes.results.forEach((m) => {
           if (m?.id && !watchedIdsSet.has(String(m.id))) {
             candidateMap.set(String(m.id), m);
@@ -98,19 +89,27 @@ export const EraRecommendationsModal = ({
         });
       }
 
-      // Se ainda houver poucas opções, faz uma segunda busca de descoberta geral na era
-      if (candidateMap.size < 8) {
-        const discoverFallback = await discoverMoviesByEra(decadeKey, [], 1);
-        if (discoverFallback.results) {
-          discoverFallback.results.forEach((m) => {
+      // Processa descobertas gerais da era
+      if (discoverFallback?.results) {
+        discoverFallback.results.forEach((m) => {
+          if (m?.id && !watchedIdsSet.has(String(m.id))) {
+            candidateMap.set(String(m.id), m);
+          }
+        });
+      }
+
+      // Processa recomendações baseadas nos filmes assistidos na era
+      recResults.forEach((res) => {
+        if (res?.results) {
+          res.results.forEach((m) => {
             if (m?.id && !watchedIdsSet.has(String(m.id))) {
               candidateMap.set(String(m.id), m);
             }
           });
         }
-      }
+      });
 
-      // 5. REGRA RÍGIDA: Filtra estritamente filmes que pertencem ÀQUELA ERA e não assistidos
+      // 4. REGRA RÍGIDA: Filtra estritamente filmes que pertencem ÀQUELA ERA e não assistidos
       const finalRecs = Array.from(candidateMap.values())
         .filter((m) => isMovieInDecade(m.release_date, decadeKey))
         .filter((m) => !watchedIdsSet.has(String(m.id)))
