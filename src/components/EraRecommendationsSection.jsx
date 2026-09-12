@@ -194,11 +194,7 @@ export const EraRecommendationsSection = ({
           <Text style={styles.emptyText}>Nenhuma recomendação encontrada para esta era.</Text>
         </View>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalList}
-        >
+        <View style={styles.verticalList}>
           {recommendations.map((movie) => {
             const posterUri = getMoviePosterUrl(movie.poster_path);
             const year = movie.release_date ? movie.release_date.substring(0, 4) : '';
@@ -211,45 +207,54 @@ export const EraRecommendationsSection = ({
             return (
               <TouchableOpacity
                 key={movie.id}
-                style={styles.itemCard}
+                style={styles.itemCardVertical}
                 activeOpacity={0.88}
                 onPress={() => setSelectedMovieForDetails(movie)}
               >
-                <View style={styles.posterContainer}>
+                <View style={styles.posterContainerVertical}>
                   {posterUri ? (
                     <Image source={{ uri: posterUri }} style={styles.poster} resizeMode="cover" />
                   ) : (
                     <View style={[styles.poster, styles.posterFallback]}>
-                      <Icon name="film-outline" size={24} color={theme.colors.textMuted} />
+                      <Icon name="film-outline" size={20} color={theme.colors.textMuted} />
                     </View>
                   )}
+                </View>
 
-                  {rating && rating !== '0.0' ? (
-                    <View style={styles.ratingBadge}>
-                      <Icon name="star" size={9} color={theme.colors.accent} />
-                      <Text style={styles.ratingText}>{rating}</Text>
-                    </View>
-                  ) : null}
+                <View style={styles.movieInfoCol}>
+                  <Text style={styles.movieTitle} numberOfLines={1}>
+                    {movie.title}
+                  </Text>
 
-                  {year ? (
-                    <View style={styles.yearBadge}>
-                      <Text style={styles.yearBadgeText}>{year}</Text>
-                    </View>
+                  <View style={styles.movieMetaRow}>
+                    {year ? (
+                      <View style={styles.yearTag}>
+                        <Text style={styles.yearTagText}>{year}</Text>
+                      </View>
+                    ) : null}
+
+                    {rating && rating !== '0.0' ? (
+                      <View style={styles.ratingTag}>
+                        <Icon name="star" size={10} color={theme.colors.accent} />
+                        <Text style={styles.ratingTagText}>{rating}</Text>
+                      </View>
+                    ) : null}
+
+                    {genreName ? (
+                      <Text style={styles.genreTagText} numberOfLines={1}>
+                        {genreName}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {movie.overview ? (
+                    <Text style={styles.overviewText} numberOfLines={2}>
+                      {movie.overview}
+                    </Text>
                   ) : null}
                 </View>
 
-                <Text style={styles.movieTitle} numberOfLines={1}>
-                  {movie.title}
-                </Text>
-
-                {genreName ? (
-                  <Text style={styles.genreText} numberOfLines={1}>
-                    {genreName}
-                  </Text>
-                ) : null}
-
-                {/* BOTOES DE AÇÃO COMPACTOS */}
-                <View style={styles.actionsRow}>
+                <View style={styles.actionsCol}>
                   <TouchableOpacity
                     style={[
                       styles.actionBtn,
@@ -261,18 +266,18 @@ export const EraRecommendationsSection = ({
                   >
                     <Icon
                       name={watched ? 'checkmark-circle' : 'eye'}
-                      size={12}
+                      size={13}
                       color={watched ? theme.colors.success : '#FFF'}
                     />
                     <Text style={[styles.actionBtnText, watched && styles.watchedBtnText]}>
-                      {watched ? 'Visto' : '+ Ver'}
+                      {watched ? 'Visto' : 'Ver'}
                     </Text>
                   </TouchableOpacity>
 
                   {!watched ? (
                     <TouchableOpacity
                       style={[
-                        styles.actionBtn,
+                        styles.watchlistIconBtn,
                         onWatchlist ? styles.watchlistBtnActive : styles.watchlistBtn,
                       ]}
                       disabled={isItemLoading}
@@ -281,7 +286,7 @@ export const EraRecommendationsSection = ({
                     >
                       <Icon
                         name={onWatchlist ? 'bookmark' : 'bookmark-outline'}
-                        size={12}
+                        size={13}
                         color={onWatchlist ? theme.colors.accent : theme.colors.textSecondary}
                       />
                     </TouchableOpacity>
@@ -290,7 +295,7 @@ export const EraRecommendationsSection = ({
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       )}
 
       {/* MODAL DE DETALHES COMPLEMENTAR AO CLICAR EM UM FILME */}
@@ -413,91 +418,98 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
   },
 
-  horizontalList: {
+  verticalList: {
     gap: 10,
-    paddingRight: 10,
   },
-  itemCard: {
-    width: 105,
+  itemCardVertical: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.surfaceLight,
     borderRadius: theme.borderRadius.md,
-    padding: 6,
+    padding: 8,
     borderWidth: 1,
     borderColor: theme.colors.surfaceBorder,
+    gap: 10,
   },
-  posterContainer: {
-    width: '100%',
-    height: 140,
+  posterContainerVertical: {
+    width: 52,
+    height: 78,
     borderRadius: theme.borderRadius.sm,
     overflow: 'hidden',
-    position: 'relative',
-    marginBottom: 6,
+    backgroundColor: theme.colors.surface,
   },
   poster: {
     width: '100%',
     height: '100%',
   },
   posterFallback: {
-    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ratingBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
+  movieInfoCol: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  movieTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  movieMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(11, 12, 18, 0.85)',
+    gap: 6,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  yearTag: {
+    backgroundColor: 'rgba(96, 165, 250, 0.15)',
     paddingHorizontal: 5,
-    paddingVertical: 2,
+    paddingVertical: 1,
     borderRadius: 4,
   },
-  ratingText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: theme.colors.accent,
-  },
-  yearBadge: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    backgroundColor: 'rgba(11, 12, 18, 0.85)',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 3,
-  },
-  yearBadgeText: {
-    fontSize: 9,
+  yearTagText: {
+    fontSize: 10,
     fontWeight: '700',
     color: '#60A5FA',
   },
-  movieTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: theme.colors.text,
-    marginBottom: 2,
-  },
-  genreText: {
-    fontSize: 9,
-    color: theme.colors.textMuted,
-    marginBottom: 6,
-  },
-  actionsRow: {
+  ratingTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    backgroundColor: 'rgba(255, 184, 0, 0.12)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  ratingTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: theme.colors.accent,
+  },
+  genreTagText: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+  },
+  overviewText: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    lineHeight: 14,
+  },
+  actionsCol: {
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 4,
-    flex: 1,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.sm,
   },
   addWatchBtn: {
     backgroundColor: theme.colors.primary,
@@ -506,23 +518,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   actionBtnText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFF',
   },
   watchedBtnText: {
     color: theme.colors.success,
   },
+  watchlistIconBtn: {
+    padding: 6,
+    borderRadius: theme.borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   watchlistBtn: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.surfaceBorder,
-    paddingHorizontal: 6,
   },
   watchlistBtnActive: {
     backgroundColor: 'rgba(255, 184, 0, 0.15)',
     borderWidth: 1,
     borderColor: theme.colors.accent,
-    paddingHorizontal: 6,
   },
 });
