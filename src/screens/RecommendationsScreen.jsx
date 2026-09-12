@@ -561,6 +561,15 @@ export const RecommendationsScreen = ({
     }
   }, [moviesForPattern, watchedMovies, watchedIdsSet]);
 
+  useEffect(() => {
+    fetchRecommendations();
+  }, [moviesKey, fetchRecommendations]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchRecommendations();
+  }, [fetchRecommendations]);
+
   const handleWatchMovie = async (movie) => {
     if (!user?.uid) return;
     if (onAddWatched) {
