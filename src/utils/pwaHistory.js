@@ -30,13 +30,15 @@ if (typeof window !== 'undefined') {
         return;
       }
 
-      // 2. Se não houver modal aberto, navega entre abas
-      const targetTab = event.state?.tab || 'recommendations';
-      window.dispatchEvent(new CustomEvent('pwa-tab-change', { detail: { tab: targetTab } }));
+      // 2. Se não houver modal aberto, navega entre abas somente se uma aba alvo foi explicitamente definida
+      if (event.state?.tab) {
+        window.dispatchEvent(new CustomEvent('pwa-tab-change', { detail: { tab: event.state.tab } }));
+      }
 
       // 3. Se estiver na raiz e sem histórico anterior, impede o fechamento acidental do PWA
       if (!event.state || event.state.root) {
-        window.history.pushState({ appInitialized: true, tab: 'recommendations' }, '', window.location.pathname);
+        const currentTab = event.state?.tab || 'recommendations';
+        window.history.pushState({ appInitialized: true, tab: currentTab }, '', window.location.pathname);
       }
     } finally {
       setTimeout(() => {
@@ -58,9 +60,10 @@ export const registerModalHistory = (onClose) => {
   const handlerObj = { close: onClose };
   modalCloseHandlers.push(handlerObj);
 
-  // Push uma entrada de histórico para representar a abertura do modal
+  // Push uma entrada de histórico para representar a abertura do modal preservando a aba atual
   try {
-    window.history.pushState({ modalOpen: true }, '', '#modal');
+    const currentTab = window.history.state?.tab || 'stats';
+    window.history.pushState({ modalOpen: true, tab: currentTab }, '', '#modal');
   } catch (_) {}
 
   let cleanedUp = false;
@@ -75,15 +78,11 @@ export const registerModalHistory = (onClose) => {
 
     // Se o modal foi fechado por clique na UI (e não pelo gesto de voltar), desfaz a entrada no history
     if (!isPoppingState) {
-      isPoppingState = true;
       try {
         if (window.history.state && window.history.state.modalOpen) {
           window.history.back();
         }
       } catch (_) {}
-      setTimeout(() => {
-        isPoppingState = false;
-      }, 100);
     }
   };
 };
