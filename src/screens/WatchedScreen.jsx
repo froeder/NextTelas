@@ -52,15 +52,51 @@ export const WatchedScreen = ({
     }
   }, [movieToRemove]);
 
-  // Filtra filmes da lista ativa e ordena alfabeticamente
+  // Modo de Ordenação: 'recent' (Últimos Adicionados) ou 'alphabet' (Alfabético A-Z)
+  const [sortBy, setSortBy] = useState('recent');
+
+  const getWatchedTime = (m) => {
+    if (!m) return 0;
+    if (m.watchedAt) {
+      if (typeof m.watchedAt.toMillis === 'function') return m.watchedAt.toMillis();
+      if (typeof m.watchedAt.toDate === 'function') return m.watchedAt.toDate().getTime();
+      if (typeof m.watchedAt.seconds === 'number') return m.watchedAt.seconds * 1000;
+      if (typeof m.watchedAt === 'number') return m.watchedAt;
+      if (typeof m.watchedAt === 'string') {
+        const parsed = new Date(m.watchedAt).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    if (m.addedAt) {
+      if (typeof m.addedAt.toMillis === 'function') return m.addedAt.toMillis();
+      if (typeof m.addedAt.toDate === 'function') return m.addedAt.toDate().getTime();
+      if (typeof m.addedAt.seconds === 'number') return m.addedAt.seconds * 1000;
+      if (typeof m.addedAt === 'number') return m.addedAt;
+      if (typeof m.addedAt === 'string') {
+        const parsed = new Date(m.addedAt).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    return 0;
+  };
+
+  // Filtra filmes da lista ativa e ordena de acordo com a preferência
   const filteredMovies = (activeListId === 'all'
     ? watchedMovies
     : watchedMovies.filter(
         (m) => Array.isArray(m.listIds) && m.listIds.includes(activeListId)
       )
-  ).slice().sort((a, b) =>
-    (a.title || '').localeCompare(b.title || '', 'pt-BR', { sensitivity: 'base' })
-  );
+  ).slice().sort((a, b) => {
+    if (sortBy === 'recent') {
+      const timeA = getWatchedTime(a);
+      const timeB = getWatchedTime(b);
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    }
+    return (a.title || '').localeCompare(b.title || '', 'pt-BR', { sensitivity: 'base' });
+  });
 
   const activeListObj = customLists.find((l) => l.id === activeListId);
 
@@ -279,6 +315,24 @@ export const WatchedScreen = ({
         </View>
 
         <View style={styles.headerRightButtons}>
+          {filteredMovies.length > 0 && (
+            <TouchableOpacity
+              style={[styles.sortToggleBtn, sortBy === 'recent' && styles.sortToggleBtnActive]}
+              onPress={() => setSortBy((prev) => (prev === 'alphabet' ? 'recent' : 'alphabet'))}
+              activeOpacity={0.8}
+            >
+              <Icon
+                name={sortBy === 'recent' ? 'clock' : 'film'}
+                size={13}
+                color={sortBy === 'recent' ? theme.colors.accent : theme.colors.textSecondary}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[styles.sortToggleText, sortBy === 'recent' && styles.sortToggleTextActive]}>
+                {sortBy === 'recent' ? 'Recentes' : 'A-Z'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {filteredMovies.length > 0 && (
             <TouchableOpacity
               style={[styles.selectToggleBtn, isSelectionMode && styles.selectToggleBtnActive]}
@@ -617,6 +671,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  sortToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceLight,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  sortToggleBtnActive: {
+    backgroundColor: 'rgba(255, 184, 0, 0.12)',
+    borderColor: 'rgba(255, 184, 0, 0.4)',
+  },
+  sortToggleText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+  },
+  sortToggleTextActive: {
+    color: theme.colors.accent,
+    fontWeight: '700',
   },
   selectToggleBtn: {
     flexDirection: 'row',
