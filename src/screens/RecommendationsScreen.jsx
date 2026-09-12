@@ -300,6 +300,36 @@ export const RecommendationsScreen = ({
   const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
   const isMovieWatched = (movieId) => watchedIdsSet.has(String(movieId));
 
+  // Array 'recomendados' com TODOS os filmes recomendados únicos (sem repetidos)
+  const recomendados = React.useMemo(() => {
+    const map = new Map();
+    Object.values(recsBySource).forEach((movieList) => {
+      if (Array.isArray(movieList)) {
+        movieList.forEach((movie) => {
+          if (movie && movie.id && !map.has(String(movie.id))) {
+            map.set(String(movie.id), movie);
+          }
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [recsBySource]);
+
+  // Escolhe um filme aleatório entre todos os recomendados
+  const handlePickRandomMovie = () => {
+    if (!recomendados || recomendados.length === 0) {
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('Nenhuma recomendação disponível no momento.');
+      } else {
+        Alert.alert('Aviso', 'Nenhuma recomendação disponível no momento.');
+      }
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * recomendados.length);
+    const randomMovie = recomendados[randomIndex];
+    setDetailMovie(randomMovie);
+  };
+
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     try {
@@ -534,6 +564,33 @@ export const RecommendationsScreen = ({
           listName={activeListName}
         />
 
+        {/* Banner de Sortear Filme Aleatório entre todos os recomendados */}
+        {recomendados.length > 0 && !loading && (
+          <View style={styles.randomBarWrapper}>
+            <TouchableOpacity
+              style={styles.randomPickBanner}
+              onPress={handlePickRandomMovie}
+              activeOpacity={0.85}
+            >
+              <View style={styles.randomPickLeft}>
+                <View style={styles.randomIconBadge}>
+                  <Icon name="sparkles" size={18} color="#FFF" />
+                </View>
+                <View style={styles.randomPickTextCol}>
+                  <Text style={styles.randomPickTitle}>Não sabe o que assistir?</Text>
+                  <Text style={styles.randomPickSub}>
+                    Escolha um filme aleatório entre os {recomendados.length} recomendados
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.randomPickBtn}>
+                <Icon name="zap" size={14} color="#FFF" style={{ marginRight: 5 }} />
+                <Text style={styles.randomPickBtnText}>Sortear</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Estados */}
         {loading && !refreshing ? (
           <Loading message={activeListName ? `Descobrindo filmes para "${activeListName}"...` : 'Buscando recomendações personalizadas...'} />
@@ -583,8 +640,19 @@ export const RecommendationsScreen = ({
                     {activeListName ? `Para "${activeListName}"` : 'Para Você'}
                   </Text>
                 </View>
-                <View style={styles.globalHeaderBadge}>
-                  <Text style={styles.globalHeaderBadgeText}>{totalRecs} sugestões</Text>
+                <View style={styles.globalHeaderRightGroup}>
+                  <TouchableOpacity
+                    style={styles.globalHeaderRandomBtn}
+                    onPress={handlePickRandomMovie}
+                    activeOpacity={0.8}
+                  >
+                    <Icon name="zap" size={12} color={theme.colors.accent} style={{ marginRight: 4 }} />
+                    <Text style={styles.globalHeaderRandomBtnText}>Sortear Aleatório</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.globalHeaderBadge}>
+                    <Text style={styles.globalHeaderBadgeText}>{recomendados.length} sugestões</Text>
+                  </View>
                 </View>
               </View>
             )}
@@ -731,6 +799,83 @@ const styles = StyleSheet.create({
   },
   selectorChipTextActive: {
     color: '#FFF',
+    fontWeight: '700',
+  },
+  randomBarWrapper: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    paddingBottom: 2,
+  },
+  randomPickBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(229, 9, 20, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 9, 20, 0.4)',
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+  },
+  randomPickLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  randomIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  randomPickTextCol: {
+    flex: 1,
+  },
+  randomPickTitle: {
+    color: theme.colors.text,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '800',
+  },
+  randomPickSub: {
+    color: theme.colors.textSecondary,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  randomPickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: theme.borderRadius.sm,
+  },
+  randomPickBtnText: {
+    color: '#FFF',
+    fontSize: theme.fontSize.xs,
+    fontWeight: '700',
+  },
+  globalHeaderRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  globalHeaderRandomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 184, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 184, 0, 0.35)',
+    borderRadius: theme.borderRadius.round,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  globalHeaderRandomBtnText: {
+    color: theme.colors.accent,
+    fontSize: 11,
     fontWeight: '700',
   },
   sectionsWrapper: {
