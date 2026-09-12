@@ -10,6 +10,7 @@ import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { extractTopGenres } from '../utils/genreExtractor';
 import { getGenreNameById } from '../utils/tmdbGenres';
+import { EraRecommendationsModal } from '../components/EraRecommendationsModal';
 
 export const StatsScreen = ({
   watchedMovies = [],
@@ -17,9 +18,15 @@ export const StatsScreen = ({
   customLists = [],
   onNavigateToSearch,
   onNavigateToRecommendations,
+  onAddWatched,
+  onAddToWatchlist,
+  onRemoveFromWatchlist,
 }) => {
   // Lista ativa para filtrar as estatísticas ('all' ou id da lista)
   const [selectedListId, setSelectedListId] = useState('all');
+
+  // Década selecionada para exibir o modal de recomendações
+  const [selectedDecadeModal, setSelectedDecadeModal] = useState(null);
 
   // Filtra filmes com base na lista selecionada
   const filteredMovies = (selectedListId === 'all'
@@ -461,15 +468,23 @@ export const StatsScreen = ({
                   <Icon name="calendar" size={20} color="#60A5FA" />
                   <Text style={styles.sectionTitle}>Eras do Cinema</Text>
                 </View>
-                <Text style={styles.sectionBadge}>Lançamento</Text>
+                <Text style={styles.sectionBadge}>Clique para Recomendações ✨</Text>
               </View>
 
               <View style={styles.decadeGrid}>
                 {sortedDecades.map(([decade, count]) => (
-                  <View key={decade} style={styles.decadeCard}>
-                    <Text style={styles.decadeName}>{decade}</Text>
+                  <TouchableOpacity
+                    key={decade}
+                    style={styles.decadeCard}
+                    activeOpacity={0.75}
+                    onPress={() => setSelectedDecadeModal(decade)}
+                  >
+                    <View style={styles.decadeCardHeader}>
+                      <Text style={styles.decadeName}>{decade}</Text>
+                      <Icon name="sparkles" size={10} color="#60A5FA" />
+                    </View>
                     <Text style={styles.decadeCount}>{count} {count === 1 ? 'filme' : 'filmes'}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
 
@@ -568,6 +583,20 @@ export const StatsScreen = ({
             </View>
           </View>
         </>
+      )}
+
+      {/* MODAL DE RECOMENDAÇÕES DA ERA SELECIONADA */}
+      {selectedDecadeModal && (
+        <EraRecommendationsModal
+          visible={!!selectedDecadeModal}
+          decadeKey={selectedDecadeModal}
+          watchedMovies={watchedMovies}
+          watchlist={watchlist}
+          onClose={() => setSelectedDecadeModal(null)}
+          onAddWatched={onAddWatched}
+          onAddToWatchlist={onAddToWatchlist}
+          onRemoveFromWatchlist={onRemoveFromWatchlist}
+        />
       )}
     </ScrollView>
   );
@@ -965,8 +994,13 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.surfaceBorder,
-    minWidth: 80,
+    minWidth: 85,
     alignItems: 'center',
+  },
+  decadeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   decadeName: {
     fontSize: theme.fontSize.xs,

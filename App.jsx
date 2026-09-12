@@ -333,6 +333,9 @@ export default function App() {
             customLists={customLists}
             onNavigateToSearch={() => setActiveTab('search')}
             onNavigateToRecommendations={() => setActiveTab('recommendations')}
+            onAddWatched={handleAddWatched}
+            onAddToWatchlist={handleAddToWatchlist}
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
           />
         );
       default:

@@ -247,3 +247,92 @@ export const getMovieRecommendations = async (movieId, page = 1) => {
     error: null,
   };
 };
+
+/**
+ * Verifica se a data de lançamento de um filme pertence a uma determinada década
+ * @param {string} releaseDate - ex: '1985-07-03'
+ * @param {string} decadeKey - ex: '80s', '90s', '≤ 70s', '2000s', '2010s', '2020s'
+ * @returns {boolean}
+ */
+export const isMovieInDecade = (releaseDate, decadeKey) => {
+  if (!releaseDate) return false;
+  const year = parseInt(releaseDate.substring(0, 4), 10);
+  if (isNaN(year)) return false;
+
+  switch (decadeKey) {
+    case '≤ 70s':
+      return year <= 1979;
+    case '80s':
+      return year >= 1980 && year <= 1989;
+    case '90s':
+      return year >= 1990 && year <= 1999;
+    case '2000s':
+      return year >= 2000 && year <= 2009;
+    case '2010s':
+      return year >= 2010 && year <= 2019;
+    case '2020s':
+      return year >= 2020 && year <= 2029;
+    default:
+      return false;
+  }
+};
+
+/**
+ * Busca filmes da TMDb filtrados por era/década
+ * @param {string} decadeKey - ex: '80s', '90s', etc.
+ * @param {number[]} genreIds - array de IDs de gênero para filtrar
+ * @param {number} page
+ */
+export const discoverMoviesByEra = async (decadeKey, genreIds = [], page = 1) => {
+  let gte = '1900-01-01';
+  let lte = '2029-12-31';
+
+  if (decadeKey === '≤ 70s') {
+    gte = '1900-01-01';
+    lte = '1979-12-31';
+  } else if (decadeKey === '80s') {
+    gte = '1980-01-01';
+    lte = '1989-12-31';
+  } else if (decadeKey === '90s') {
+    gte = '1990-01-01';
+    lte = '1999-12-31';
+  } else if (decadeKey === '2000s') {
+    gte = '2000-01-01';
+    lte = '2009-12-31';
+  } else if (decadeKey === '2010s') {
+    gte = '2010-01-01';
+    lte = '2019-12-31';
+  } else if (decadeKey === '2020s') {
+    gte = '2020-01-01';
+    lte = '2029-12-31';
+  }
+
+  const params = {
+    'primary_release_date.gte': gte,
+    'primary_release_date.lte': lte,
+    sort_by: 'popularity.desc',
+    include_adult: 'false',
+    page,
+  };
+
+  if (Array.isArray(genreIds) && genreIds.length > 0) {
+    params.with_genres = genreIds.join('|');
+  }
+
+  const { data, error } = await fetchTmdb('/discover/movie', params);
+
+  if (error || !data) {
+    return { results: [], error };
+  }
+
+  const filteredResults = (data.results || []).filter((m) =>
+    isMovieInDecade(m.release_date, decadeKey)
+  );
+
+  return {
+    results: filteredResults,
+    total_pages: data.total_pages || 1,
+    error: null,
+  };
+};
+
