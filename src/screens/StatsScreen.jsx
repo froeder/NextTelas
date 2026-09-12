@@ -5,13 +5,12 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { Icon } from '../components/Icon';
 import { theme } from '../utils/theme';
 import { extractTopGenres } from '../utils/genreExtractor';
 import { getGenreNameById } from '../utils/tmdbGenres';
-import { EraRecommendationsModal } from '../components/EraRecommendationsModal';
+import { EraRecommendationsSection } from '../components/EraRecommendationsSection';
 
 export const StatsScreen = ({
   watchedMovies = [],
@@ -26,19 +25,12 @@ export const StatsScreen = ({
   // Lista ativa para filtrar as estatísticas ('all' ou id da lista)
   const [selectedListId, setSelectedListId] = useState('all');
 
-  // Década selecionada para exibir o modal de recomendações e estado de carregamento
-  const [selectedDecadeModal, setSelectedDecadeModal] = useState(null);
-  const [loadingDecade, setLoadingDecade] = useState(null);
+  // Década selecionada para exibir a seção inline de recomendações (collapse/expand)
+  const [selectedDecadeEra, setSelectedDecadeEra] = useState(null);
 
-  const handleOpenDecade = (decade) => {
-    setLoadingDecade(decade);
-    setSelectedDecadeModal(decade);
+  const handleToggleDecadeEra = (decade) => {
+    setSelectedDecadeEra((prev) => (prev === decade ? null : decade));
   };
-
-  const handleCloseDecadeModal = React.useCallback(() => {
-    setSelectedDecadeModal(null);
-    setLoadingDecade(null);
-  }, []);
 
   // Filtra filmes com base na lista selecionada
   const filteredMovies = (selectedListId === 'all'
@@ -486,33 +478,42 @@ export const StatsScreen = ({
 
                 <View style={styles.decadeGrid}>
                   {sortedDecades.map(([decade, count]) => {
-                    const isLoadingThisDecade = loadingDecade === decade;
+                    const isSelected = selectedDecadeEra === decade;
 
                     return (
                       <TouchableOpacity
                         key={decade}
                         style={[
                           styles.decadeCard,
-                          isLoadingThisDecade && styles.decadeCardActive,
+                          isSelected && styles.decadeCardActive,
                         ]}
                         activeOpacity={0.7}
-                        onPress={() => handleOpenDecade(decade)}
+                        onPress={() => handleToggleDecadeEra(decade)}
                       >
                         <View style={styles.decadeCardHeader} pointerEvents="none">
-                          <Text style={styles.decadeName}>{decade}</Text>
-                          {isLoadingThisDecade ? (
-                            <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 2 }} />
-                          ) : (
-                            <Icon name="sparkles" size={10} color="#60A5FA" />
-                          )}
+                          <Text style={[styles.decadeName, isSelected && styles.decadeNameActive]}>{decade}</Text>
+                          <Icon name={isSelected ? 'sparkles' : 'sparkles-outline'} size={10} color={isSelected ? theme.colors.primary : '#60A5FA'} />
                         </View>
-                        <Text style={styles.decadeCount} pointerEvents="none">
-                          {isLoadingThisDecade ? 'Carregando...' : `${count} ${count === 1 ? 'filme' : 'filmes'}`}
+                        <Text style={[styles.decadeCount, isSelected && styles.decadeCountActive]} pointerEvents="none">
+                          {count} {count === 1 ? 'filme' : 'filmes'}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
+
+                {/* SEÇÃO EXPANSÍVEL / INLINE DE RECOMENDAÇÕES DA ERA */}
+                {selectedDecadeEra && (
+                  <EraRecommendationsSection
+                    decadeKey={selectedDecadeEra}
+                    watchedMovies={watchedMovies}
+                    watchlist={watchlist}
+                    onClose={() => setSelectedDecadeEra(null)}
+                    onAddWatched={onAddWatched}
+                    onAddToWatchlist={onAddToWatchlist}
+                    onRemoveFromWatchlist={onRemoveFromWatchlist}
+                  />
+                )}
 
                 {/* Destaque Filme Mais Antigo e Mais Recente */}
                 <View style={styles.extremesRow}>
@@ -611,20 +612,6 @@ export const StatsScreen = ({
           </>
         )}
       </ScrollView>
-
-      {/* MODAL DE RECOMENDAÇÕES DA ERA SELECIONADA */}
-      {selectedDecadeModal && (
-        <EraRecommendationsModal
-          visible={!!selectedDecadeModal}
-          decadeKey={selectedDecadeModal}
-          watchedMovies={watchedMovies}
-          watchlist={watchlist}
-          onClose={handleCloseDecadeModal}
-          onAddWatched={onAddWatched}
-          onAddToWatchlist={onAddToWatchlist}
-          onRemoveFromWatchlist={onRemoveFromWatchlist}
-        />
-      )}
     </View>
   );
 };
