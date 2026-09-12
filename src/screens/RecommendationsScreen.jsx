@@ -443,6 +443,8 @@ export const RecommendationsScreen = ({
 
       setRecsBySource((prev) => {
         const updated = { ...prev };
+        const newSourceIds = [];
+
         results.forEach((result, idx) => {
           const sourceMovie = sourceCandidates[idx];
           if (result.status !== 'fulfilled') return;
@@ -459,13 +461,18 @@ export const RecommendationsScreen = ({
             // Acumula, mas limita a 12 por seção para não sobrecarregar a UI
             const existing = updated[sourceMovie.id] || [];
             updated[sourceMovie.id] = [...existing, ...fresh].slice(0, 12);
-
-            // Garante que a seção está na ordem
-            setSourceOrder((order) =>
-              order.includes(String(sourceMovie.id)) ? order : [...order, String(sourceMovie.id)]
-            );
+            newSourceIds.push(sourceMovie.id);
           }
         });
+
+        if (newSourceIds.length > 0) {
+          setSourceOrder((prevOrder) => {
+            const existingSet = new Set(prevOrder.map((id) => String(id)));
+            const idsToAdd = newSourceIds.filter((id) => !existingSet.has(String(id)));
+            return idsToAdd.length > 0 ? [...prevOrder, ...idsToAdd] : prevOrder;
+          });
+        }
+
         return updated;
       });
 
