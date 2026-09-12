@@ -198,13 +198,13 @@ const styles = StyleSheet.create({
   },
   versionBadgeText: {
     color: theme.colors.primary,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   tagline: {
     color: theme.colors.textSecondary,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     flexShrink: 1,
   },
@@ -335,12 +335,12 @@ const styles = StyleSheet.create({
   },
   versionFooterText: {
     color: theme.colors.textMuted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   versionDateText: {
     color: theme.colors.textMuted,
-    fontSize: 9,
+    fontSize: 10,
     marginTop: 2,
   },
 });

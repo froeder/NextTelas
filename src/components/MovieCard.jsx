@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   listBadgeText: {
     color: theme.colors.textSecondary,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   genresWrapper: {
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   overview: {
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.xs,
-    lineHeight: 16,
+    lineHeight: 18,
     marginBottom: 6,
   },
   actionRow: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   tapForMoreText: {
     color: theme.colors.textMuted,
-    fontSize: 10,
+    fontSize: 11,
     fontStyle: 'italic',
   },
   watchlistButton: {

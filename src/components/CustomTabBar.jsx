@@ -114,11 +114,11 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#FFF',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 3,
     fontWeight: '600',
   },

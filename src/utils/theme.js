@@ -43,11 +43,12 @@ export const theme = {
   },
   
   fontSize: {
-    xs: 11,
-    sm: 13,
-    md: 15,
-    lg: 18,
-    xl: 22,
-    xxl: 28,
+    xs: 13,
+    sm: 15,
+    md: 17,
+    lg: 20,
+    xl: 24,
+    xxl: 30,
   },
 };
+

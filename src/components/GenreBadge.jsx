@@ -42,6 +42,6 @@ const styles = StyleSheet.create({
     color: '#FF7B82',
   },
   smallText: {
-    fontSize: 10,
+    fontSize: 11,
   },
 });
