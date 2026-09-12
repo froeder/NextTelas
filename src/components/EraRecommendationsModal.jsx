@@ -39,13 +39,20 @@ export const EraRecommendationsModal = ({
   const [selectedMovieForDetails, setSelectedMovieForDetails] = useState(null);
   const [loadingMovieId, setLoadingMovieId] = useState(null);
 
-  // Registra navegação para fechar com o botão Voltar do navegador/PWA
+  const onCloseRef = React.useRef(onClose);
   useEffect(() => {
-    if (visible && onClose) {
-      const unregister = registerModalHistory(onClose);
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Registra navegação para fechar com o botão Voltar do navegador/PWA (apenas quando visible altera)
+  useEffect(() => {
+    if (visible) {
+      const unregister = registerModalHistory(() => {
+        if (onCloseRef.current) onCloseRef.current();
+      });
       return () => unregister();
     }
-  }, [visible, onClose]);
+  }, [visible]);
 
   const watchedIdsSet = new Set(watchedMovies.map((m) => String(m.id)));
   const watchlistIdsSet = new Set(watchlist.map((m) => String(m.id)));
@@ -54,7 +61,7 @@ export const EraRecommendationsModal = ({
   const isMovieOnWatchlist = (id) => watchlistIdsSet.has(String(id));
 
   // Busca recomendações quando o modal fica visível para uma década específica
-  const fetchEraRecommendations = useCallback(async () => {
+  const fetchEraRecommendations = async () => {
     if (!decadeKey) return;
     setLoading(true);
 
@@ -121,16 +128,17 @@ export const EraRecommendationsModal = ({
     } finally {
       setLoading(false);
     }
-  }, [decadeKey, watchedMovies]);
+  };
 
   useEffect(() => {
     if (visible && decadeKey) {
       fetchEraRecommendations();
-    } else {
+    } else if (!visible) {
       setRecommendations([]);
       setEraWatchedMovies([]);
+      setLoading(false);
     }
-  }, [visible, decadeKey, fetchEraRecommendations]);
+  }, [visible, decadeKey]);
 
   const handleToggleWatch = async (movie, e) => {
     e?.stopPropagation?.();

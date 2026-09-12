@@ -35,6 +35,11 @@ export const StatsScreen = ({
     setSelectedDecadeModal(decade);
   };
 
+  const handleCloseDecadeModal = React.useCallback(() => {
+    setSelectedDecadeModal(null);
+    setLoadingDecade(null);
+  }, []);
+
   // Filtra filmes com base na lista selecionada
   const filteredMovies = (selectedListId === 'all'
     ? watchedMovies
@@ -614,10 +619,7 @@ export const StatsScreen = ({
           decadeKey={selectedDecadeModal}
           watchedMovies={watchedMovies}
           watchlist={watchlist}
-          onClose={() => {
-            setSelectedDecadeModal(null);
-            setLoadingDecade(null);
-          }}
+          onClose={handleCloseDecadeModal}
           onAddWatched={onAddWatched}
           onAddToWatchlist={onAddToWatchlist}
           onRemoveFromWatchlist={onRemoveFromWatchlist}
