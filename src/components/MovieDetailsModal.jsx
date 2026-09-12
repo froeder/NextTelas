@@ -105,19 +105,27 @@ export const MovieDetailsModal = ({
     }
   };
 
-  // Registra no histórico do navegador para fechar o modal ou voltar nível
+  const movieHistoryRef = React.useRef(movieHistory);
+  movieHistoryRef.current = movieHistory;
+
+  const handleBrowserBack = React.useCallback(() => {
+    if (movieHistoryRef.current.length > 1) {
+      setMovieHistory((prev) => prev.slice(0, -1));
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
+    } else if (onClose) {
+      onClose();
+    }
+  }, [onClose]);
+
+  // Registra no histórico do navegador para fechar o modal com o gesto de voltar
   useEffect(() => {
     if (visible && onClose) {
-      const unregister = registerModalHistory(() => {
-        if (movieHistory.length > 1) {
-          handleGoBack();
-        } else {
-          onClose();
-        }
-      });
+      const unregister = registerModalHistory(handleBrowserBack);
       return () => unregister();
     }
-  }, [visible, onClose, movieHistory.length]);
+  }, [visible, onClose, handleBrowserBack]);
 
   if (!currentMovie) return null;
 
