@@ -348,12 +348,20 @@ export const RecommendationsScreen = ({
     setDetailMovie(randomMovie);
   };
 
+  const handleScroll = (event) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 400;
+    if (isNearBottom && hasMore && !loadingMore && !loading) {
+      handleLoadMore();
+    }
+  };
+
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     setLoadedMoreBadge(null);
     try {
-      // Extrai padrões de gênero para o InsightBanner
-      const patternResult = extractTopGenres(moviesForPattern, 3);
+      // Extrai padrões de gênero usando TODOS os filmes assistidos da lista/perfil
+      const patternResult = extractTopGenres(moviesForPattern, 5);
       setTopGenresInfo(patternResult);
 
       // Sem filmes: mostra fallback de populares como "seed"
@@ -365,15 +373,12 @@ export const RecommendationsScreen = ({
         return;
       }
 
-      // Escolhe os filmes-origem: os mais recentemente adicionados (ou embaralhados para variar)
+      // Amostra diversificada de filmes assistidos do usuário
       const sourceCandidates = [...moviesForPattern]
-        .sort((a, b) => {
-          // Prioriza filmes com nota alta para seed de melhor qualidade
-          return (b.vote_average || 0) - (a.vote_average || 0);
-        })
+        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
         .slice(0, MAX_SOURCE_MOVIES);
 
-      // Busca recomendações em paralelo para todos os filmes-origem (página 1)
+      // Busca recomendações em paralelo para os filmes-origem iniciais (página 1)
       const results = await Promise.allSettled(
         sourceCandidates.map((src) => getMovieRecommendations(src.id, 1))
       );
@@ -384,7 +389,7 @@ export const RecommendationsScreen = ({
       let anyHasMore = false;
       results.forEach((result, idx) => {
         const sourceMovie = sourceCandidates[idx];
-        if (result.status !== 'fulfilled') return;
+        if (result.status !== 'fulfilled' || !sourceMovie) return;
 
         const recs = result.value.results || [];
         const totalPages = result.value.total_pages || 1;
@@ -405,7 +410,7 @@ export const RecommendationsScreen = ({
       setRecsBySource(newRecsBySource);
       setSourceOrder(newOrder);
       setCurrentPage(1);
-      setHasMore(anyHasMore);
+      setHasMore(anyHasMore || moviesForPattern.length > MAX_SOURCE_MOVIES);
     } catch (error) {
       console.error('Erro no fluxo de recomendações:', error);
     } finally {
@@ -423,7 +428,7 @@ export const RecommendationsScreen = ({
     fetchRecommendations();
   };
 
-  // Carrega mais recomendações (expande profundidade TMDb + busca novos filmes-origem da lista + descoberta por gênero)
+  // Carrega mais recomendações (Scroll Infinito: profundidade TMDb + próximos filmes assistidos + gêneros favoritos)
   const handleLoadMore = async () => {
     if (loadingMore || loading) return;
     setLoadingMore(true);
@@ -435,9 +440,9 @@ export const RecommendationsScreen = ({
         (a, b) => (b.vote_average || 0) - (a.vote_average || 0)
       );
 
-      // Fontes já exibidas (ex: 0..12)
+      // Fontes já exibidas
       const currentSources = sortedWatched.slice(0, currentPage * MAX_SOURCE_MOVIES);
-      // Próximo bloco de filmes-origem da lista do usuário (ex: 12..24)
+      // Próximo bloco de filmes-origem da coleção do usuário que AINDA NÃO FORAM processados
       const nextSources = sortedWatched.slice(
         currentPage * MAX_SOURCE_MOVIES,
         (currentPage + 1) * MAX_SOURCE_MOVIES
@@ -450,7 +455,7 @@ export const RecommendationsScreen = ({
 
       const topGenreIds = topGenresInfo.topGenreIds || [];
 
-      // Requisições paralelas
+      // Recomendações em paralelo considerando TODOS os filmes e gêneros
       const [deepResults, newSourceResults, genreDiscoverResults] = await Promise.all([
         Promise.allSettled(currentSources.map((src) => getMovieRecommendations(src.id, nextPage))),
         Promise.allSettled(nextSources.map((src) => getMovieRecommendations(src.id, 1))),
@@ -464,7 +469,7 @@ export const RecommendationsScreen = ({
         const updated = { ...prev };
         const newSourceIds = [];
 
-        // a) Recomendações mais profundas das fontes atuais
+        // a) Expande os filmes das fontes atuais
         deepResults.forEach((result, idx) => {
           const sourceMovie = currentSources[idx];
           if (result.status !== 'fulfilled' || !sourceMovie) return;
@@ -483,7 +488,7 @@ export const RecommendationsScreen = ({
           }
         });
 
-        // b) Recomendações dos novos filmes-origem da coleção do usuário
+        // b) Cria novas seções para o próximo bloco de filmes assistidos
         newSourceResults.forEach((result, idx) => {
           const sourceMovie = nextSources[idx];
           if (result.status !== 'fulfilled' || !sourceMovie) return;
@@ -502,7 +507,7 @@ export const RecommendationsScreen = ({
           }
         });
 
-        // c) Descobertas pelos gêneros preferidos
+        // c) Descobertas com base em todos os gêneros do usuário
         const genreRecs = genreDiscoverResults?.results || [];
         const freshGenreRecs = genreRecs.filter((m) => !allCurrentIds.has(String(m.id)));
         if (freshGenreRecs.length > 0) {
@@ -526,11 +531,13 @@ export const RecommendationsScreen = ({
       });
 
       if (totalNewAdded > 0) {
-        setLoadedMoreBadge(`✨ +${totalNewAdded} novas sugestões e descobertas adicionadas!`);
+        setLoadedMoreBadge(`✨ +${totalNewAdded} novas sugestões baseadas no seu perfil!`);
       }
 
       setCurrentPage(nextPage);
-      setHasMore(anyHasMore || nextSources.length > 0);
+      setHasMore(
+        anyHasMore || sortedWatched.length > (currentPage + 1) * MAX_SOURCE_MOVIES
+      );
     } catch (err) {
       console.error('Erro ao carregar mais:', err);
     } finally {
@@ -570,6 +577,8 @@ export const RecommendationsScreen = ({
     <>
       <ScrollView
         style={styles.container}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -824,37 +833,30 @@ export const RecommendationsScreen = ({
               </View>
             )}
 
-            {/* Botão de Carregar Mais no rodapé */}
+            {/* Carregamento automático em Scroll Infinito + botão opcional */}
             {!hasTrending && (
               <View style={styles.loadMoreWrapper}>
-                {hasMore ? (
+                {loadingMore ? (
+                  <View style={styles.infiniteLoadingBox}>
+                    <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginRight: 10 }} />
+                    <Text style={styles.infiniteLoadingText}>
+                      Carregando automaticamente mais recomendações do seu perfil...
+                    </Text>
+                  </View>
+                ) : hasMore ? (
                   <TouchableOpacity
-                    style={[styles.loadMoreBtn, loadingMore && styles.loadMoreBtnLoading]}
+                    style={styles.loadMoreBtn}
                     onPress={handleLoadMore}
-                    disabled={loadingMore || loading}
+                    disabled={loading}
                     activeOpacity={0.8}
                   >
-                    {loadingMore ? (
-                      <>
-                        <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.loadMoreBtnText}>Buscando mais recomendações e seções...</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="refresh" size={16} color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.loadMoreBtnText}>Buscar Mais Recomendações e Seções</Text>
-                        {currentPage > 1 && (
-                          <View style={styles.pageChip}>
-                            <Text style={styles.pageChipText}>p.{currentPage + 1}</Text>
-                          </View>
-                        )}
-                      </>
-                    )}
+                    <Icon name="sparkles" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.loadMoreBtnText}>Carregar Mais Sugestões</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.noMoreWrapper}>
                     <Icon name="checkmark-circle" size={16} color={theme.colors.success} style={{ marginRight: 6 }} />
-                    <Text style={styles.noMoreText}>Todas as sugestões foram carregadas</Text>
+                    <Text style={styles.noMoreText}>Todas as recomendações do seu perfil foram carregadas</Text>
                   </View>
                 )}
               </View>
@@ -1153,6 +1155,23 @@ const styles = StyleSheet.create({
   },
   noMoreText: {
     color: theme.colors.success,
+    fontSize: theme.fontSize.xs,
+    fontWeight: '600',
+  },
+  infiniteLoadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    width: '100%',
+  },
+  infiniteLoadingText: {
+    color: theme.colors.textSecondary,
     fontSize: theme.fontSize.xs,
     fontWeight: '600',
   },
