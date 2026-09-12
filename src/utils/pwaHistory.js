@@ -53,18 +53,12 @@ if (typeof window !== 'undefined') {
  * Retorna uma função de limpeza para desregistrar ao fechar.
  */
 export const registerModalHistory = (onClose) => {
-  if (typeof window === 'undefined' || !window.history || typeof onClose !== 'function') {
+  if (typeof window === 'undefined' || typeof onClose !== 'function') {
     return () => {};
   }
 
   const handlerObj = { close: onClose };
   modalCloseHandlers.push(handlerObj);
-
-  // Push uma entrada de histórico para representar a abertura do modal preservando a aba atual
-  try {
-    const currentTab = window.history.state?.tab || 'stats';
-    window.history.pushState({ modalOpen: true, tab: currentTab }, '', '#modal');
-  } catch (_) {}
 
   let cleanedUp = false;
   return () => {
@@ -74,15 +68,6 @@ export const registerModalHistory = (onClose) => {
     const index = modalCloseHandlers.indexOf(handlerObj);
     if (index !== -1) {
       modalCloseHandlers.splice(index, 1);
-    }
-
-    // Se o modal foi fechado por clique na UI (e não pelo gesto de voltar), desfaz a entrada no history
-    if (!isPoppingState) {
-      try {
-        if (window.history.state && window.history.state.modalOpen) {
-          window.history.back();
-        }
-      } catch (_) {}
     }
   };
 };
