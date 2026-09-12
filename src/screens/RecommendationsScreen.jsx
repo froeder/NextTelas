@@ -567,9 +567,24 @@ export const RecommendationsScreen = ({
     }
   }, [moviesForPattern, watchedMovies, watchedIdsSet]);
 
+  const prevSelectedListIdRef = React.useRef(selectedListId);
+  const prevHasMoviesRef = React.useRef(moviesForPattern.length > 0);
+  const isInitialMountRef = React.useRef(true);
+
   useEffect(() => {
-    fetchRecommendations();
-  }, [moviesKey, fetchRecommendations]);
+    const listChanged = prevSelectedListIdRef.current !== selectedListId;
+    const hasMoviesNow = moviesForPattern.length > 0;
+    const movieStateChanged = prevHasMoviesRef.current !== hasMoviesNow;
+
+    prevSelectedListIdRef.current = selectedListId;
+    prevHasMoviesRef.current = hasMoviesNow;
+
+    // Dispara recarregamento apenas na montagem inicial, troca de lista ou transição de/para 0 filmes
+    if (isInitialMountRef.current || listChanged || movieStateChanged) {
+      isInitialMountRef.current = false;
+      fetchRecommendations();
+    }
+  }, [selectedListId, moviesForPattern.length, fetchRecommendations]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
