@@ -348,90 +348,20 @@ export const RecommendationsScreen = ({
     setDetailMovie(randomMovie);
   };
 
-  const handleScroll = (event) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 400;
-    if (isNearBottom && hasMore && !loadingMore && !loading) {
-      handleLoadMore();
-    }
-  };
+  const loadingRef = React.useRef(loading);
+  loadingRef.current = loading;
 
-  const fetchRecommendations = useCallback(async () => {
-    setLoading(true);
-    setLoadedMoreBadge(null);
-    try {
-      // Extrai padrões de gênero usando TODOS os filmes assistidos da lista/perfil
-      const patternResult = extractTopGenres(moviesForPattern, 5);
-      setTopGenresInfo(patternResult);
+  const loadingMoreRef = React.useRef(loadingMore);
+  loadingMoreRef.current = loadingMore;
 
-      // Sem filmes: mostra fallback de populares como "seed"
-      if (moviesForPattern.length === 0) {
-        const { results } = await getTrendingOrPopularMovies(1);
-        const filtered = filterAlreadyWatchedMovies(results || [], watchedMovies).slice(0, 6);
-        setSourceOrder(['__trending__']);
-        setRecsBySource({ '__trending__': filtered });
-        return;
-      }
-
-      // Amostra diversificada de filmes assistidos do usuário
-      const sourceCandidates = [...moviesForPattern]
-        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
-        .slice(0, MAX_SOURCE_MOVIES);
-
-      // Busca recomendações em paralelo para os filmes-origem iniciais (página 1)
-      const results = await Promise.allSettled(
-        sourceCandidates.map((src) => getMovieRecommendations(src.id, 1))
-      );
-
-      const newRecsBySource = {};
-      const newOrder = [];
-
-      let anyHasMore = false;
-      results.forEach((result, idx) => {
-        const sourceMovie = sourceCandidates[idx];
-        if (result.status !== 'fulfilled' || !sourceMovie) return;
-
-        const recs = result.value.results || [];
-        const totalPages = result.value.total_pages || 1;
-        if (totalPages > 1) anyHasMore = true;
-
-        // Filtra já assistidos + duplicatas entre seções
-        const seen = new Set(Object.values(newRecsBySource).flat().map((m) => String(m.id)));
-        const fresh = recs
-          .filter((m) => !watchedIdsSet.has(String(m.id)) && !seen.has(String(m.id)))
-          .slice(0, RECS_PER_MOVIE);
-
-        if (fresh.length > 0) {
-          newRecsBySource[sourceMovie.id] = fresh;
-          newOrder.push(sourceMovie.id);
-        }
-      });
-
-      setRecsBySource(newRecsBySource);
-      setSourceOrder(newOrder);
-      setCurrentPage(1);
-      setHasMore(anyHasMore || moviesForPattern.length > MAX_SOURCE_MOVIES);
-    } catch (error) {
-      console.error('Erro no fluxo de recomendações:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [moviesForPattern, watchedMovies, watchedIdsSet]);
-
-  useEffect(() => {
-    fetchRecommendations();
-  }, [moviesKey]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchRecommendations();
-  };
+  const hasMoreRef = React.useRef(hasMore);
+  hasMoreRef.current = hasMore;
 
   // Carrega mais recomendações (Scroll Infinito: profundidade TMDb + próximos filmes assistidos + gêneros favoritos)
-  const handleLoadMore = async () => {
-    if (loadingMore || loading) return;
+  const handleLoadMore = useCallback(async () => {
+    if (loadingMoreRef.current || loadingRef.current) return;
     setLoadingMore(true);
+    loadingMoreRef.current = true;
     setLoadedMoreBadge(null);
     const nextPage = currentPage + 1;
 
@@ -442,11 +372,17 @@ export const RecommendationsScreen = ({
 
       // Fontes já exibidas
       const currentSources = sortedWatched.slice(0, currentPage * MAX_SOURCE_MOVIES);
-      // Próximo bloco de filmes-origem da coleção do usuário que AINDA NÃO FORAM processados
-      const nextSources = sortedWatched.slice(
+      // Próximo bloco de filmes-origem da coleção do usuário
+      let nextSources = sortedWatched.slice(
         currentPage * MAX_SOURCE_MOVIES,
         (currentPage + 1) * MAX_SOURCE_MOVIES
       );
+
+      // Se já percorreu toda a lista, cicla por uma amostra dos filmes assistidos para cobrir 100% da biblioteca
+      if (nextSources.length === 0 && sortedWatched.length > 0) {
+        const offset = (currentPage * MAX_SOURCE_MOVIES) % sortedWatched.length;
+        nextSources = sortedWatched.slice(offset, offset + MAX_SOURCE_MOVIES);
+      }
 
       const allCurrentIds = new Set([
         ...watchedIdsSet,
@@ -535,15 +471,95 @@ export const RecommendationsScreen = ({
       }
 
       setCurrentPage(nextPage);
-      setHasMore(
-        anyHasMore || sortedWatched.length > (currentPage + 1) * MAX_SOURCE_MOVIES
-      );
+      setHasMore(true);
     } catch (err) {
       console.error('Erro ao carregar mais:', err);
     } finally {
       setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
-  };
+  }, [currentPage, moviesForPattern, recsBySource, topGenresInfo.topGenreIds, watchedIdsSet]);
+
+  const handleLoadMoreRef = React.useRef(handleLoadMore);
+  handleLoadMoreRef.current = handleLoadMore;
+
+  const handleScroll = useCallback((event) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent || {};
+    if (!layoutMeasurement || !contentSize) return;
+
+    const height = layoutMeasurement.height || 0;
+    const offsetY = contentOffset?.y || 0;
+    const totalHeight = contentSize.height || 0;
+
+    // Quando o usuário rola até 500px antes do fim da página
+    const isNearBottom = height + offsetY >= totalHeight - 500;
+
+    if (isNearBottom && hasMoreRef.current && !loadingMoreRef.current && !loadingRef.current) {
+      if (handleLoadMoreRef.current) {
+        handleLoadMoreRef.current();
+      }
+    }
+  }, []);
+
+  const fetchRecommendations = useCallback(async () => {
+    setLoading(true);
+    loadingRef.current = true;
+    setLoadedMoreBadge(null);
+    try {
+      // Extrai padrões de gênero usando TODOS os filmes assistidos da lista/perfil
+      const patternResult = extractTopGenres(moviesForPattern, 5);
+      setTopGenresInfo(patternResult);
+
+      // Sem filmes: mostra fallback de populares como "seed"
+      if (moviesForPattern.length === 0) {
+        const { results } = await getTrendingOrPopularMovies(1);
+        const filtered = filterAlreadyWatchedMovies(results || [], watchedMovies).slice(0, 6);
+        setSourceOrder(['__trending__']);
+        setRecsBySource({ '__trending__': filtered });
+        return;
+      }
+
+      // Amostra diversificada de filmes assistidos do usuário
+      const sourceCandidates = [...moviesForPattern]
+        .sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0))
+        .slice(0, MAX_SOURCE_MOVIES);
+
+      // Busca recomendações em paralelo para os filmes-origem iniciais (página 1)
+      const results = await Promise.allSettled(
+        sourceCandidates.map((src) => getMovieRecommendations(src.id, 1))
+      );
+
+      const newRecsBySource = {};
+      const newOrder = [];
+
+      results.forEach((result, idx) => {
+        const sourceMovie = sourceCandidates[idx];
+        if (result.status !== 'fulfilled' || !sourceMovie) return;
+
+        const recs = result.value.results || [];
+        const seen = new Set(Object.values(newRecsBySource).flat().map((m) => String(m.id)));
+        const fresh = recs
+          .filter((m) => !watchedIdsSet.has(String(m.id)) && !seen.has(String(m.id)))
+          .slice(0, RECS_PER_MOVIE);
+
+        if (fresh.length > 0) {
+          newRecsBySource[sourceMovie.id] = fresh;
+          newOrder.push(sourceMovie.id);
+        }
+      });
+
+      setRecsBySource(newRecsBySource);
+      setSourceOrder(newOrder);
+      setCurrentPage(1);
+      setHasMore(true);
+    } catch (error) {
+      console.error('Erro no fluxo de recomendações:', error);
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+      setRefreshing(false);
+    }
+  }, [moviesForPattern, watchedMovies, watchedIdsSet]);
 
   const handleWatchMovie = async (movie) => {
     if (!user?.uid) return;
