@@ -22,6 +22,7 @@ import { registerModalHistory } from '../utils/pwaHistory';
 export const WatchedScreen = ({
   user,
   watchedMovies = [],
+  watchlist = [],
   customLists = [],
   onCreateList,
   onDeleteList,
@@ -29,8 +30,10 @@ export const WatchedScreen = ({
   onNavigateToSearch,
   onNavigateToRecommendations,
   onRemoveWatched,
+  onAddToWatchlist,
+  onRemoveFromWatchlist,
 }) => {
-  // Lista ativa selecionada na aba: 'all' ou o ID da lista customizada
+  // Lista ativa selecionada na aba: 'all', 'watchlist' ou o ID da lista customizada
   const [activeListId, setActiveListId] = useState('all');
 
   // Modo de Seleção Múltipla
@@ -80,13 +83,17 @@ export const WatchedScreen = ({
     return 0;
   };
 
-  // Filtra filmes da lista ativa e ordena de acordo com a preferência
-  const filteredMovies = (activeListId === 'all'
+  // Seleciona a coleção de filmes baseada no filtro ativo
+  const baseMovies = activeListId === 'all'
     ? watchedMovies
+    : activeListId === 'watchlist'
+    ? watchlist
     : watchedMovies.filter(
         (m) => Array.isArray(m.listIds) && m.listIds.includes(activeListId)
-      )
-  ).slice().sort((a, b) => {
+      );
+
+  // Filtra filmes da lista ativa e ordena de acordo com a preferência
+  const filteredMovies = baseMovies.slice().sort((a, b) => {
     if (sortBy === 'recent') {
       const timeA = getWatchedTime(a);
       const timeB = getWatchedTime(b);
@@ -252,6 +259,26 @@ export const WatchedScreen = ({
             </Text>
           </TouchableOpacity>
 
+          {/* Aba 'Quero Assistir' */}
+          <TouchableOpacity
+            style={[styles.listChip, activeListId === 'watchlist' && styles.listChipActive]}
+            onPress={() => {
+              setActiveListId('watchlist');
+              handleExitSelection();
+            }}
+            activeOpacity={0.8}
+          >
+            <Icon
+              name="bookmark"
+              size={14}
+              color={activeListId === 'watchlist' ? theme.colors.accent : theme.colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.listChipText, activeListId === 'watchlist' && styles.listChipTextActive]}>
+              Quero Assistir ({watchlist.length})
+            </Text>
+          </TouchableOpacity>
+
           {/* Listas Customizadas */}
           {customLists.map((list) => {
             const isActive = activeListId === list.id;
@@ -298,7 +325,11 @@ export const WatchedScreen = ({
       <View style={styles.listHeaderActions}>
         <View style={styles.listHeaderTitleCol}>
           <Text style={styles.listHeaderTitle}>
-            {activeListId === 'all' ? 'Histórico Geral de Assistidos' : activeListObj?.name}
+            {activeListId === 'all'
+              ? 'Histórico Geral de Assistidos'
+              : activeListId === 'watchlist'
+              ? 'Quero Assistir'
+              : activeListObj?.name}
           </Text>
           <View style={styles.listHeaderMetaRow}>
             <Text style={styles.listHeaderSubtitle}>
@@ -357,7 +388,7 @@ export const WatchedScreen = ({
             </TouchableOpacity>
           )}
 
-          {activeListId !== 'all' && (
+          {activeListId !== 'all' && activeListId !== 'watchlist' && (
             <TouchableOpacity
               style={styles.deleteListBtn}
               onPress={handleDeleteCurrentList}
@@ -382,7 +413,7 @@ export const WatchedScreen = ({
             </View>
             <View>
               <Text style={styles.recommendShortcutTitle}>
-                Recomendações para {activeListId === 'all' ? 'esta coleção' : `"${activeListObj?.name}"`}
+                Recomendações para {activeListId === 'all' ? 'esta coleção' : activeListId === 'watchlist' ? 'sua lista de desejos' : `"${activeListObj?.name}"`}
               </Text>
               <Text style={styles.recommendShortcutSub}>
                 Descubra títulos afins baseados nestes {filteredMovies.length} filmes
@@ -422,23 +453,33 @@ export const WatchedScreen = ({
         </View>
       )}
 
-      {/* Lista de Filmes Assistidos */}
+      {/* Lista de Filmes */}
       <FlatList
         data={filteredMovies}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <MovieCard
-            movie={item}
-            isWatched={true}
-            showRemoveButton={!isSelectionMode}
-            onPressRemove={setMovieToRemove}
-            isSelectable={isSelectionMode}
-            isSelected={selectedMovieIds.has(String(item.id))}
-            onToggleSelect={toggleSelectMovie}
-            onPressMoveToList={handleOpenMoveSingle}
-            customListName={activeListId === 'all' ? getMovieCustomListName(item) : null}
-          />
-        )}
+        renderItem={({ item }) => {
+          const isItemWatched = watchedMovies.some((m) => String(m.id) === String(item.id));
+          const isItemOnWatchlist = watchlist.some((m) => String(m.id) === String(item.id));
+          return (
+            <MovieCard
+              movie={item}
+              isWatched={isItemWatched}
+              isOnWatchlist={isItemOnWatchlist}
+              showRemoveButton={!isSelectionMode && activeListId !== 'watchlist'}
+              onPressRemove={setMovieToRemove}
+              onPressWatch={activeListId === 'watchlist' ? async (m) => {
+                if (onRemoveFromWatchlist) await onRemoveFromWatchlist(m.id);
+              } : undefined}
+              onAddToWatchlist={onAddToWatchlist}
+              onRemoveFromWatchlist={onRemoveFromWatchlist}
+              isSelectable={isSelectionMode}
+              isSelected={selectedMovieIds.has(String(item.id))}
+              onToggleSelect={toggleSelectMovie}
+              onPressMoveToList={handleOpenMoveSingle}
+              customListName={activeListId === 'all' ? getMovieCustomListName(item) : null}
+            />
+          );
+        }}
         contentContainerStyle={[
           styles.listContent,
           isSelectionMode && selectedMovieIds.size > 0 && { paddingBottom: 100 },
@@ -446,16 +487,20 @@ export const WatchedScreen = ({
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBg}>
-              <Icon name="film-outline" size={42} color={theme.colors.textMuted} />
+              <Icon name="bookmark-outline" size={42} color={theme.colors.textMuted} />
             </View>
             <Text style={styles.emptyTitle}>
               {activeListId === 'all'
                 ? 'Nenhum Filme Registrado'
+                : activeListId === 'watchlist'
+                ? 'Sua Lista Quero Assistir está Vazia'
                 : `A lista "${activeListObj?.name}" está vazia`}
             </Text>
             <Text style={styles.emptyText}>
               {activeListId === 'all'
                 ? 'Pesquise seus filmes favoritos e marque "Já Assisti" para alimentar as recomendações.'
+                : activeListId === 'watchlist'
+                ? 'Ao buscar ou explorar filmes, toque em "Quero Assistir" para salvá-los nesta lista!'
                 : 'Mova filmes da aba "Todos" para esta lista para obter recomendações direcionadas!'}
             </Text>
 

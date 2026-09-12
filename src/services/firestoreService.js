@@ -331,10 +331,16 @@ export const subscribeWatchlist = (userId, onUpdate) => {
 
   const watchlistRef = getWatchlistRef(userId);
   return onSnapshot(
-    query(watchlistRef, orderBy('addedAt', 'desc')),
+    watchlistRef,
     (snapshot) => {
       const movies = [];
       snapshot.forEach((docSnap) => movies.push(docSnap.data()));
+      // Ordenação segura em memória por data de adição (mais recentes primeiro)
+      movies.sort((a, b) => {
+        const timeA = a.addedAt?.seconds ? a.addedAt.seconds * 1000 : (a.addedAt || 0);
+        const timeB = b.addedAt?.seconds ? b.addedAt.seconds * 1000 : (b.addedAt || 0);
+        return timeB - timeA;
+      });
       onUpdate(movies);
     },
     (error) => {

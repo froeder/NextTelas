@@ -313,6 +313,7 @@ export default function App() {
           <WatchedScreen
             user={user}
             watchedMovies={watchedMovies}
+            watchlist={watchlist}
             customLists={customLists}
             onCreateList={handleCreateList}
             onDeleteList={handleDeleteList}
@@ -320,6 +321,8 @@ export default function App() {
             onNavigateToSearch={() => setActiveTab('search')}
             onNavigateToRecommendations={handleNavigateToRecommendationsForList}
             onRemoveWatched={handleRemoveWatched}
+            onAddToWatchlist={handleAddToWatchlist}
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
           />
         );
       case 'stats':
