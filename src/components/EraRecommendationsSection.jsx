@@ -252,6 +252,7 @@ export const EraRecommendationsSection = ({
                       {movie.overview}
                     </Text>
                   ) : null}
+                  <Text style={styles.tapDetailsText}>Toque para ver detalhes completos ➔</Text>
                 </View>
 
                 <View style={styles.actionsCol}>
@@ -540,5 +541,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 184, 0, 0.15)',
     borderWidth: 1,
     borderColor: theme.colors.accent,
+  },
+  tapDetailsText: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: 3,
   },
 });

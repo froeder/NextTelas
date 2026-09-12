@@ -108,24 +108,27 @@ export const MovieDetailsModal = ({
   const movieHistoryRef = React.useRef(movieHistory);
   movieHistoryRef.current = movieHistory;
 
-  const handleBrowserBack = React.useCallback(() => {
-    if (movieHistoryRef.current.length > 1) {
-      setMovieHistory((prev) => prev.slice(0, -1));
-      if (scrollViewRef.current) {
-        scrollViewRef.current.scrollTo({ y: 0, animated: true });
-      }
-    } else if (onClose) {
-      onClose();
-    }
-  }, [onClose]);
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Registra no histórico do navegador para fechar o modal com o gesto de voltar
   useEffect(() => {
-    if (visible && onClose) {
-      const unregister = registerModalHistory(handleBrowserBack);
+    if (visible) {
+      const handleBack = () => {
+        if (movieHistoryRef.current.length > 1) {
+          setMovieHistory((prev) => prev.slice(0, -1));
+          if (scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({ y: 0, animated: true });
+          }
+        } else if (onCloseRef.current) {
+          onCloseRef.current();
+        }
+      };
+
+      const unregister = registerModalHistory(handleBack);
       return () => unregister();
     }
-  }, [visible, onClose, handleBrowserBack]);
+  }, [visible]);
 
   if (!currentMovie) return null;
 
