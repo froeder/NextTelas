@@ -350,14 +350,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   card: {
+    width: '100%',
+    maxWidth: 500,
+    height: '88%',
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
     borderWidth: 1,
     borderColor: theme.colors.surfaceBorder,
-    height: '88%',
     padding: theme.spacing.md,
   },
   header: {

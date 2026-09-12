@@ -138,307 +138,241 @@ export const StatsScreen = ({
   const completionPercentage = totalCatalog > 0 ? Math.round((totalWatched / totalCatalog) * 100) : 0;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* SELETOR DE LISTAS PARA ESTATÍSTICAS */}
-      <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          <TouchableOpacity
-            style={[styles.filterChip, selectedListId === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedListId('all')}
-            activeOpacity={0.7}
-          >
-            <Icon
-              name="film"
-              size={14}
-              color={selectedListId === 'all' ? '#FFF' : theme.colors.textMuted}
-            />
-            <Text style={[styles.filterChipText, selectedListId === 'all' && styles.filterChipTextActive]}>
-              Todos ({watchedMovies.length})
-            </Text>
-          </TouchableOpacity>
-
-          {customLists.map((list) => {
-            const countInList = watchedMovies.filter(
-              (m) => Array.isArray(m.listIds) && m.listIds.includes(list.id)
-            ).length;
-            const isActive = selectedListId === list.id;
-
-            return (
-              <TouchableOpacity
-                key={list.id}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-                onPress={() => setSelectedListId(list.id)}
-                activeOpacity={0.7}
-              >
-                <Icon
-                  name={list.icon || 'film'}
-                  size={14}
-                  color={isActive ? '#FFF' : theme.colors.textMuted}
-                />
-                <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
-                  {list.name} ({countInList})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* ESTADO VAZIO */}
-      {totalWatched === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Icon name="analytics" size={42} color={theme.colors.primary} />
-          </View>
-          <Text style={styles.emptyTitle}>Nenhuma estatística ainda</Text>
-          <Text style={styles.emptySubtitle}>
-            {selectedListId === 'all'
-              ? 'Marque os filmes que você já assistiu para desbloquear gráficos, horas acumuladas, gêneros favoritos e análises de cinéfilo!'
-              : 'Esta lista ainda não possui filmes registrados como assistidos.'}
-          </Text>
-
-          <View style={styles.emptyActionButtons}>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* SELETOR DE LISTAS PARA ESTATÍSTICAS */}
+        <View style={styles.filterSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
             <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={onNavigateToSearch}
-              activeOpacity={0.8}
+              style={[styles.filterChip, selectedListId === 'all' && styles.filterChipActive]}
+              onPress={() => setSelectedListId('all')}
+              activeOpacity={0.7}
             >
-              <Icon name="search" size={18} color="#FFF" />
-              <Text style={styles.primaryButtonText}>Buscar Filmes</Text>
+              <Icon
+                name="film"
+                size={14}
+                color={selectedListId === 'all' ? '#FFF' : theme.colors.textMuted}
+              />
+              <Text style={[styles.filterChipText, selectedListId === 'all' && styles.filterChipTextActive]}>
+                Todos ({watchedMovies.length})
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={onNavigateToRecommendations}
-              activeOpacity={0.8}
-            >
-              <Icon name="sparkles" size={18} color={theme.colors.primary} />
-              <Text style={styles.secondaryButtonText}>Ver Recomendações</Text>
-            </TouchableOpacity>
-          </View>
+            {customLists.map((list) => {
+              const countInList = watchedMovies.filter(
+                (m) => Array.isArray(m.listIds) && m.listIds.includes(list.id)
+              ).length;
+              const isActive = selectedListId === list.id;
+
+              return (
+                <TouchableOpacity
+                  key={list.id}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
+                  onPress={() => setSelectedListId(list.id)}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    name={list.icon || 'film'}
+                    size={14}
+                    color={isActive ? '#FFF' : theme.colors.textMuted}
+                  />
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {list.name} ({countInList})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
-      ) : (
-        <>
-          {/* BANNER DO PERFIL DE CINÉFILO */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeEmoji}>{levelInfo.badge}</Text>
+
+        {/* ESTADO VAZIO */}
+        {totalWatched === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Icon name="analytics" size={42} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>Nenhuma estatística ainda</Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedListId === 'all'
+                ? 'Marque os filmes que você já assistiu para desbloquear gráficos, horas acumuladas, gêneros favoritos e análises de cinéfilo!'
+                : 'Esta lista ainda não possui filmes registrados como assistidos.'}
+            </Text>
+
+            <View style={styles.emptyActionButtons}>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={onNavigateToSearch}
+                activeOpacity={0.8}
+              >
+                <Icon name="search" size={18} color="#FFF" />
+                <Text style={styles.primaryButtonText}>Buscar Filmes</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={onNavigateToRecommendations}
+                activeOpacity={0.8}
+              >
+                <Icon name="sparkles" size={18} color={theme.colors.primary} />
+                <Text style={styles.secondaryButtonText}>Ver Recomendações</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* BANNER DO PERFIL DE CINÉFILO */}
+            <View style={styles.heroCard}>
+              <View style={styles.heroTopRow}>
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeEmoji}>{levelInfo.badge}</Text>
+                </View>
+                <View style={styles.heroTextWrapper}>
+                  <Text style={styles.heroSubtitle}>SEU PERFIL CINEMATOGRÁFICO</Text>
+                  <Text style={[styles.heroTitle, { color: levelInfo.color }]}>
+                    {levelInfo.title}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.heroTextWrapper}>
-                <Text style={styles.heroSubtitle}>SEU PERFIL CINEMATOGRÁFICO</Text>
-                <Text style={[styles.heroTitle, { color: levelInfo.color }]}>
-                  {levelInfo.title}
-                </Text>
+
+              <View style={styles.heroStatsRow}>
+                {/* Tempo Total */}
+                <View style={styles.heroStatItem}>
+                  <Icon name="clock" size={20} color={theme.colors.primary} />
+                  <Text style={styles.heroStatValue}>
+                    {totalDays > 0 ? `${totalDays}d ${totalHours}h` : `${totalHoursAbsolute}h ${remainingMinutes}m`}
+                  </Text>
+                  <Text style={styles.heroStatLabel}>Tempo em Telas</Text>
+                </View>
+
+                <View style={styles.heroStatDivider} />
+
+                {/* Total Assistidos */}
+                <View style={styles.heroStatItem}>
+                  <Icon name="film" size={20} color={theme.colors.accent} />
+                  <Text style={styles.heroStatValue}>{totalWatched}</Text>
+                  <Text style={styles.heroStatLabel}>Filmes Assistidos</Text>
+                </View>
+
+                <View style={styles.heroStatDivider} />
+
+                {/* Média de Nota */}
+                <View style={styles.heroStatItem}>
+                  <Icon name="star" size={20} color={theme.colors.accent} />
+                  <Text style={styles.heroStatValue}>{averageRating}</Text>
+                  <Text style={styles.heroStatLabel}>Média TMDb</Text>
+                </View>
+              </View>
+
+              {/* Curiosidade / Equivalência */}
+              {totalMinutes > 0 && (
+                <View style={styles.funFactBox}>
+                  <Icon name="zap" size={15} color={theme.colors.accent} />
+                  <Text style={styles.funFactText}>
+                    Seu tempo de cinema equivale a <Text style={styles.boldText}>{soccerMatchesEquiv} partidas de futebol</Text> ou <Text style={styles.boldText}>{flightsEquiv} voos continentais</Text>!
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* GRID DE MÉTRICAS RÁPIDAS */}
+            <View style={styles.gridContainer}>
+              {/* Card: Duração Média */}
+              <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                  <View style={[styles.iconCircle, { backgroundColor: 'rgba(229, 9, 20, 0.15)' }]}>
+                    <Icon name="time-outline" size={18} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.metricLabel}>Duração Média</Text>
+                </View>
+                <Text style={styles.metricNumber}>{averageRuntime} <Text style={styles.metricUnit}>min</Text></Text>
+                <Text style={styles.metricSubtext}>Duração média por filme</Text>
+              </View>
+
+              {/* Card: Progresso de Catalogo */}
+              <View style={styles.metricCard}>
+                <View style={styles.metricHeader}>
+                  <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <Icon name="checkmark-circle" size={18} color={theme.colors.success} />
+                  </View>
+                  <Text style={styles.metricLabel}>Fila de Espera</Text>
+                </View>
+                <Text style={styles.metricNumber}>{watchlistCount} <Text style={styles.metricUnit}>para ver</Text></Text>
+                <Text style={styles.metricSubtext}>{completionPercentage}% do catálogo assistido</Text>
               </View>
             </View>
 
-            <View style={styles.heroStatsRow}>
-              {/* Tempo Total */}
-              <View style={styles.heroStatItem}>
-                <Icon name="clock" size={20} color={theme.colors.primary} />
-                <Text style={styles.heroStatValue}>
-                  {totalDays > 0 ? `${totalDays}d ${totalHours}h` : `${totalHoursAbsolute}h ${remainingMinutes}m`}
-                </Text>
-                <Text style={styles.heroStatLabel}>Tempo em Telas</Text>
-              </View>
+            {/* GÊNEROS MAIS ASSISTIDOS */}
+            {topGenresDetails.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <Icon name="flame" size={20} color={theme.colors.primary} />
+                    <Text style={styles.sectionTitle}>Gêneros Predominantes</Text>
+                  </View>
+                  <Text style={styles.sectionBadge}>Top {topGenresDetails.length}</Text>
+                </View>
 
-              <View style={styles.heroStatDivider} />
+                <View style={styles.genreList}>
+                  {topGenresDetails.map((genre, idx) => {
+                    const percentage = totalGenreCount > 0 ? Math.round((genre.count / totalGenreCount) * 100) : 0;
 
-              {/* Total Assistidos */}
-              <View style={styles.heroStatItem}>
-                <Icon name="film" size={20} color={theme.colors.accent} />
-                <Text style={styles.heroStatValue}>{totalWatched}</Text>
-                <Text style={styles.heroStatLabel}>Filmes Assistidos</Text>
-              </View>
+                    return (
+                      <View key={genre.id} style={styles.genreItem}>
+                        <View style={styles.genreInfoRow}>
+                          <View style={styles.genreNameWrapper}>
+                            <Text style={styles.genreRank}>#{idx + 1}</Text>
+                            <Text style={styles.genreName}>{genre.name}</Text>
+                            {idx === 0 && (
+                              <View style={styles.favoriteTag}>
+                                <Text style={styles.favoriteTagText}>Favorito 👑</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.genreCountText}>
+                            {genre.count} {genre.count === 1 ? 'filme' : 'filmes'} ({percentage}%)
+                          </Text>
+                        </View>
 
-              <View style={styles.heroStatDivider} />
-
-              {/* Média de Nota */}
-              <View style={styles.heroStatItem}>
-                <Icon name="star" size={20} color={theme.colors.accent} />
-                <Text style={styles.heroStatValue}>{averageRating}</Text>
-                <Text style={styles.heroStatLabel}>Média TMDb</Text>
-              </View>
-            </View>
-
-            {/* Curiosidade / Equivalência */}
-            {totalMinutes > 0 && (
-              <View style={styles.funFactBox}>
-                <Icon name="zap" size={15} color={theme.colors.accent} />
-                <Text style={styles.funFactText}>
-                  Seu tempo de cinema equivale a <Text style={styles.boldText}>{soccerMatchesEquiv} partidas de futebol</Text> ou <Text style={styles.boldText}>{flightsEquiv} voos continentais</Text>!
-                </Text>
+                        {/* Barra de Progresso */}
+                        <View style={styles.progressBarBg}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              {
+                                width: `${Math.max(percentage, 6)}%`,
+                                backgroundColor: idx === 0 ? theme.colors.primary : idx === 1 ? theme.colors.accent : '#4F46E5',
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             )}
-          </View>
 
-          {/* GRID DE MÉTRICAS RÁPIDAS */}
-          <View style={styles.gridContainer}>
-            {/* Card: Duração Média */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(229, 9, 20, 0.15)' }]}>
-                  <Icon name="time-outline" size={18} color={theme.colors.primary} />
-                </View>
-                <Text style={styles.metricLabel}>Duração Média</Text>
-              </View>
-              <Text style={styles.metricNumber}>{averageRuntime} <Text style={styles.metricUnit}>min</Text></Text>
-              <Text style={styles.metricSubtext}>Duração média por filme</Text>
-            </View>
-
-            {/* Card: Progresso de Catalogo */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                  <Icon name="checkmark-circle" size={18} color={theme.colors.success} />
-                </View>
-                <Text style={styles.metricLabel}>Fila de Espera</Text>
-              </View>
-              <Text style={styles.metricNumber}>{watchlistCount} <Text style={styles.metricUnit}>para ver</Text></Text>
-              <Text style={styles.metricSubtext}>{completionPercentage}% do catálogo assistido</Text>
-            </View>
-          </View>
-
-          {/* GÊNEROS MAIS ASSISTIDOS */}
-          {topGenresDetails.length > 0 && (
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <Icon name="flame" size={20} color={theme.colors.primary} />
-                  <Text style={styles.sectionTitle}>Gêneros Predominantes</Text>
-                </View>
-                <Text style={styles.sectionBadge}>Top {topGenresDetails.length}</Text>
-              </View>
-
-              <View style={styles.genreList}>
-                {topGenresDetails.map((genre, idx) => {
-                  const percentage = totalGenreCount > 0 ? Math.round((genre.count / totalGenreCount) * 100) : 0;
-
-                  return (
-                    <View key={genre.id} style={styles.genreItem}>
-                      <View style={styles.genreInfoRow}>
-                        <View style={styles.genreNameWrapper}>
-                          <Text style={styles.genreRank}>#{idx + 1}</Text>
-                          <Text style={styles.genreName}>{genre.name}</Text>
-                          {idx === 0 && (
-                            <View style={styles.favoriteTag}>
-                              <Text style={styles.favoriteTagText}>Favorito 👑</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.genreCountText}>
-                          {genre.count} {genre.count === 1 ? 'filme' : 'filmes'} ({percentage}%)
-                        </Text>
-                      </View>
-
-                      {/* Barra de Progresso */}
-                      <View style={styles.progressBarBg}>
-                        <View
-                          style={[
-                            styles.progressBarFill,
-                            {
-                              width: `${Math.max(percentage, 6)}%`,
-                              backgroundColor: idx === 0 ? theme.colors.primary : idx === 1 ? theme.colors.accent : '#4F46E5',
-                            },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* QUALIDADE DAS NOTAS (TMDb RATINGS DISTRIBUTION) */}
-          {moviesWithRating.length > 0 && (
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <Icon name="star" size={20} color={theme.colors.accent} />
-                  <Text style={styles.sectionTitle}>Qualidade da sua Coleção</Text>
-                </View>
-                <Text style={styles.sectionBadge}>Notas TMDb</Text>
-              </View>
-
-              <View style={styles.ratingTiersContainer}>
-                {/* 8.0 - 10.0 */}
-                <View style={styles.tierRow}>
-                  <View style={styles.tierLabelCol}>
-                    <Text style={styles.tierEmoji}>🌟</Text>
-                    <Text style={styles.tierName}>Obras-Primas (8.0+)</Text>
+            {/* QUALIDADE DAS NOTAS (TMDb RATINGS DISTRIBUTION) */}
+            {moviesWithRating.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <Icon name="star" size={20} color={theme.colors.accent} />
+                    <Text style={styles.sectionTitle}>Qualidade da sua Coleção</Text>
                   </View>
-                  <View style={styles.tierBarCol}>
-                    <View style={styles.progressBarBg}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${totalWatched > 0 ? (ratingTiers.masterpiece / totalWatched) * 100 : 0}%`,
-                            backgroundColor: '#FBBF24',
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <Text style={styles.tierCountText}>{ratingTiers.masterpiece}</Text>
+                  <Text style={styles.sectionBadge}>Notas TMDb</Text>
                 </View>
 
-                {/* 7.0 - 7.9 */}
-                <View style={styles.tierRow}>
-                  <View style={styles.tierLabelCol}>
-                    <Text style={styles.tierEmoji}>👍</Text>
-                    <Text style={styles.tierName}>Muito Bons (7.0 - 7.9)</Text>
-                  </View>
-                  <View style={styles.tierBarCol}>
-                    <View style={styles.progressBarBg}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${totalWatched > 0 ? (ratingTiers.great / totalWatched) * 100 : 0}%`,
-                            backgroundColor: '#10B981',
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <Text style={styles.tierCountText}>{ratingTiers.great}</Text>
-                </View>
-
-                {/* 5.0 - 6.9 */}
-                <View style={styles.tierRow}>
-                  <View style={styles.tierLabelCol}>
-                    <Text style={styles.tierEmoji}>🍿</Text>
-                    <Text style={styles.tierName}>Bons / Medianos (5.0 - 6.9)</Text>
-                  </View>
-                  <View style={styles.tierBarCol}>
-                    <View style={styles.progressBarBg}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: `${totalWatched > 0 ? (ratingTiers.good / totalWatched) * 100 : 0}%`,
-                            backgroundColor: '#60A5FA',
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                  <Text style={styles.tierCountText}>{ratingTiers.good}</Text>
-                </View>
-
-                {/* < 5.0 */}
-                {ratingTiers.low > 0 && (
+                <View style={styles.ratingTiersContainer}>
+                  {/* 8.0 - 10.0 */}
                   <View style={styles.tierRow}>
                     <View style={styles.tierLabelCol}>
-                      <Text style={styles.tierEmoji}>⚡</Text>
-                      <Text style={styles.tierName}>Abaixo de 5.0</Text>
+                      <Text style={styles.tierEmoji}>🌟</Text>
+                      <Text style={styles.tierName}>Obras-Primas (8.0+)</Text>
                     </View>
                     <View style={styles.tierBarCol}>
                       <View style={styles.progressBarBg}>
@@ -446,144 +380,214 @@ export const StatsScreen = ({
                           style={[
                             styles.progressBarFill,
                             {
-                              width: `${totalWatched > 0 ? (ratingTiers.low / totalWatched) * 100 : 0}%`,
-                              backgroundColor: '#EF4444',
+                              width: `${totalWatched > 0 ? (ratingTiers.masterpiece / totalWatched) * 100 : 0}%`,
+                              backgroundColor: '#FBBF24',
                             },
                           ]}
                         />
                       </View>
                     </View>
-                    <Text style={styles.tierCountText}>{ratingTiers.low}</Text>
+                    <Text style={styles.tierCountText}>{ratingTiers.masterpiece}</Text>
                   </View>
-                )}
-              </View>
-            </View>
-          )}
 
-          {/* DÉCADAS E ERAS DO CINEMA */}
-          {sortedDecades.length > 0 && (
+                  {/* 7.0 - 7.9 */}
+                  <View style={styles.tierRow}>
+                    <View style={styles.tierLabelCol}>
+                      <Text style={styles.tierEmoji}>👍</Text>
+                      <Text style={styles.tierName}>Muito Bons (7.0 - 7.9)</Text>
+                    </View>
+                    <View style={styles.tierBarCol}>
+                      <View style={styles.progressBarBg}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            {
+                              width: `${totalWatched > 0 ? (ratingTiers.great / totalWatched) * 100 : 0}%`,
+                              backgroundColor: '#10B981',
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <Text style={styles.tierCountText}>{ratingTiers.great}</Text>
+                  </View>
+
+                  {/* 5.0 - 6.9 */}
+                  <View style={styles.tierRow}>
+                    <View style={styles.tierLabelCol}>
+                      <Text style={styles.tierEmoji}>🍿</Text>
+                      <Text style={styles.tierName}>Bons / Medianos (5.0 - 6.9)</Text>
+                    </View>
+                    <View style={styles.tierBarCol}>
+                      <View style={styles.progressBarBg}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            {
+                              width: `${totalWatched > 0 ? (ratingTiers.good / totalWatched) * 100 : 0}%`,
+                              backgroundColor: '#60A5FA',
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                    <Text style={styles.tierCountText}>{ratingTiers.good}</Text>
+                  </View>
+
+                  {/* < 5.0 */}
+                  {ratingTiers.low > 0 && (
+                    <View style={styles.tierRow}>
+                      <View style={styles.tierLabelCol}>
+                        <Text style={styles.tierEmoji}>⚡</Text>
+                        <Text style={styles.tierName}>Abaixo de 5.0</Text>
+                      </View>
+                      <View style={styles.tierBarCol}>
+                        <View style={styles.progressBarBg}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              {
+                                width: `${totalWatched > 0 ? (ratingTiers.low / totalWatched) * 100 : 0}%`,
+                                backgroundColor: '#EF4444',
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      <Text style={styles.tierCountText}>{ratingTiers.low}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* DÉCADAS E ERAS DO CINEMA */}
+            {sortedDecades.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <Icon name="calendar" size={20} color="#60A5FA" />
+                    <Text style={styles.sectionTitle}>Eras do Cinema</Text>
+                  </View>
+                  <Text style={styles.sectionBadge}>Clique para Recomendações ✨</Text>
+                </View>
+
+                <View style={styles.decadeGrid}>
+                  {sortedDecades.map(([decade, count]) => (
+                    <TouchableOpacity
+                      key={decade}
+                      style={styles.decadeCard}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedDecadeModal(decade)}
+                    >
+                      <View style={styles.decadeCardHeader} pointerEvents="none">
+                        <Text style={styles.decadeName}>{decade}</Text>
+                        <Icon name="sparkles" size={10} color="#60A5FA" />
+                      </View>
+                      <Text style={styles.decadeCount} pointerEvents="none">
+                        {count} {count === 1 ? 'filme' : 'filmes'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Destaque Filme Mais Antigo e Mais Recente */}
+                <View style={styles.extremesRow}>
+                  {oldestMovie && (
+                    <View style={styles.extremeItem}>
+                      <Text style={styles.extremeLabel}>📜 MAIS ANTIGO</Text>
+                      <Text style={styles.extremeTitle} numberOfLines={1}>
+                        {oldestMovie.title}
+                      </Text>
+                      <Text style={styles.extremeYear}>
+                        {oldestMovie.release_date?.substring(0, 4)}
+                      </Text>
+                    </View>
+                  )}
+
+                  {newestMovie && (
+                    <View style={styles.extremeItem}>
+                      <Text style={styles.extremeLabel}>✨ MAIS RECENTE</Text>
+                      <Text style={styles.extremeTitle} numberOfLines={1}>
+                        {newestMovie.title}
+                      </Text>
+                      <Text style={styles.extremeYear}>
+                        {newestMovie.release_date?.substring(0, 4)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* DESTAQUES DA SUA COLEÇÃO */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  <Icon name="calendar" size={20} color="#60A5FA" />
-                  <Text style={styles.sectionTitle}>Eras do Cinema</Text>
+                  <Icon name="trophy" size={20} color={theme.colors.accent} />
+                  <Text style={styles.sectionTitle}>Recordes e Marcas</Text>
                 </View>
-                <Text style={styles.sectionBadge}>Clique para Recomendações ✨</Text>
               </View>
 
-              <View style={styles.decadeGrid}>
-                {sortedDecades.map(([decade, count]) => (
-                  <TouchableOpacity
-                    key={decade}
-                    style={styles.decadeCard}
-                    activeOpacity={0.75}
-                    onPress={() => setSelectedDecadeModal(decade)}
-                  >
-                    <View style={styles.decadeCardHeader}>
-                      <Text style={styles.decadeName}>{decade}</Text>
-                      <Icon name="sparkles" size={10} color="#60A5FA" />
+              <View style={styles.recordsList}>
+                {/* Filme mais longo */}
+                {longestMovie && (
+                  <View style={styles.recordRow}>
+                    <View style={[styles.recordIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                      <Icon name="clock" size={20} color={theme.colors.primary} />
                     </View>
-                    <Text style={styles.decadeCount}>{count} {count === 1 ? 'filme' : 'filmes'}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Destaque Filme Mais Antigo e Mais Recente */}
-              <View style={styles.extremesRow}>
-                {oldestMovie && (
-                  <View style={styles.extremeItem}>
-                    <Text style={styles.extremeLabel}>📜 MAIS ANTIGO</Text>
-                    <Text style={styles.extremeTitle} numberOfLines={1}>
-                      {oldestMovie.title}
-                    </Text>
-                    <Text style={styles.extremeYear}>
-                      {oldestMovie.release_date?.substring(0, 4)}
-                    </Text>
+                    <View style={styles.recordInfo}>
+                      <Text style={styles.recordCategory}>FILME MAIS LONGO</Text>
+                      <Text style={styles.recordMovieTitle}>{longestMovie.title}</Text>
+                    </View>
+                    <View style={styles.recordBadge}>
+                      <Text style={styles.recordBadgeText}>
+                        {Number(longestMovie.runtime) || 110} min
+                      </Text>
+                    </View>
                   </View>
                 )}
 
-                {newestMovie && (
-                  <View style={styles.extremeItem}>
-                    <Text style={styles.extremeLabel}>✨ MAIS RECENTE</Text>
-                    <Text style={styles.extremeTitle} numberOfLines={1}>
-                      {newestMovie.title}
-                    </Text>
-                    <Text style={styles.extremeYear}>
-                      {newestMovie.release_date?.substring(0, 4)}
-                    </Text>
+                {/* Filme com maior nota */}
+                {highestRatedMovie && (
+                  <View style={styles.recordRow}>
+                    <View style={[styles.recordIconBox, { backgroundColor: 'rgba(255, 184, 0, 0.15)' }]}>
+                      <Icon name="star" size={20} color={theme.colors.accent} />
+                    </View>
+                    <View style={styles.recordInfo}>
+                      <Text style={styles.recordCategory}>MAIOR NOTA ASSISTIDA</Text>
+                      <Text style={styles.recordMovieTitle}>{highestRatedMovie.title}</Text>
+                    </View>
+                    <View style={[styles.recordBadge, { backgroundColor: 'rgba(255, 184, 0, 0.2)' }]}>
+                      <Text style={[styles.recordBadgeText, { color: theme.colors.accent }]}>
+                        ★ {Number(highestRatedMovie.vote_average).toFixed(1)}
+                      </Text>
+                    </View>
                   </View>
                 )}
-              </View>
-            </View>
-          )}
 
-          {/* DESTAQUES DA SUA COLEÇÃO */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Icon name="trophy" size={20} color={theme.colors.accent} />
-                <Text style={styles.sectionTitle}>Recordes e Marcas</Text>
-              </View>
-            </View>
-
-            <View style={styles.recordsList}>
-              {/* Filme mais longo */}
-              {longestMovie && (
+                {/* Total de listas customizadas */}
                 <View style={styles.recordRow}>
-                  <View style={[styles.recordIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                    <Icon name="clock" size={20} color={theme.colors.primary} />
+                  <View style={[styles.recordIconBox, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
+                    <Icon name="film" size={20} color="#60A5FA" />
                   </View>
                   <View style={styles.recordInfo}>
-                    <Text style={styles.recordCategory}>FILME MAIS LONGO</Text>
-                    <Text style={styles.recordMovieTitle}>{longestMovie.title}</Text>
+                    <Text style={styles.recordCategory}>ORGANIZAÇÃO DE LISTAS</Text>
+                    <Text style={styles.recordMovieTitle}>
+                      {customLists.length} {customLists.length === 1 ? 'lista criada' : 'listas criadas'}
+                    </Text>
                   </View>
-                  <View style={styles.recordBadge}>
-                    <Text style={styles.recordBadgeText}>
-                      {Number(longestMovie.runtime) || 110} min
+                  <View style={[styles.recordBadge, { backgroundColor: 'rgba(96, 165, 250, 0.2)' }]}>
+                    <Text style={[styles.recordBadgeText, { color: '#60A5FA' }]}>
+                      {customLists.length}
                     </Text>
                   </View>
                 </View>
-              )}
-
-              {/* Filme com maior nota */}
-              {highestRatedMovie && (
-                <View style={styles.recordRow}>
-                  <View style={[styles.recordIconBox, { backgroundColor: 'rgba(255, 184, 0, 0.15)' }]}>
-                    <Icon name="star" size={20} color={theme.colors.accent} />
-                  </View>
-                  <View style={styles.recordInfo}>
-                    <Text style={styles.recordCategory}>MAIOR NOTA ASSISTIDA</Text>
-                    <Text style={styles.recordMovieTitle}>{highestRatedMovie.title}</Text>
-                  </View>
-                  <View style={[styles.recordBadge, { backgroundColor: 'rgba(255, 184, 0, 0.2)' }]}>
-                    <Text style={[styles.recordBadgeText, { color: theme.colors.accent }]}>
-                      ★ {Number(highestRatedMovie.vote_average).toFixed(1)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Total de listas customizadas */}
-              <View style={styles.recordRow}>
-                <View style={[styles.recordIconBox, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
-                  <Icon name="film" size={20} color="#60A5FA" />
-                </View>
-                <View style={styles.recordInfo}>
-                  <Text style={styles.recordCategory}>ORGANIZAÇÃO DE LISTAS</Text>
-                  <Text style={styles.recordMovieTitle}>
-                    {customLists.length} {customLists.length === 1 ? 'lista criada' : 'listas criadas'}
-                  </Text>
-                </View>
-                <View style={[styles.recordBadge, { backgroundColor: 'rgba(96, 165, 250, 0.2)' }]}>
-                  <Text style={[styles.recordBadgeText, { color: '#60A5FA' }]}>
-                    {customLists.length}
-                  </Text>
-                </View>
               </View>
             </View>
-          </View>
-        </>
-      )}
+          </>
+        )}
+      </ScrollView>
 
       {/* MODAL DE RECOMENDAÇÕES DA ERA SELECIONADA */}
       {selectedDecadeModal && (
@@ -598,7 +602,7 @@ export const StatsScreen = ({
           onRemoveFromWatchlist={onRemoveFromWatchlist}
         />
       )}
-    </ScrollView>
+    </View>
   );
 };
 
