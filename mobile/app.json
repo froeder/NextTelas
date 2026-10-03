@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "NextTelas",
+    "slug": "nexttelas",
+    "version": "1.0.38",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0C12"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexttelas.app"
+    },
+    "android": {
+      "package": "com.nexttelas.app",
+      "versionCode": 38,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0B0C12"
+      },
+      "permissions": ["INTERNET"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
