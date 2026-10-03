@@ -95,7 +95,7 @@ mobile/
 │   └── version.json         # Versão e build do app
 ├── .env                     # Variáveis de ambiente
 ├── .gitignore
-├── app.json                 # Configurações do Expo (pacote com.nexttelas.app, ícones, permissões)
+├── app.json                 # Configurações do Expo (pacote com.froeder.nexttelas, ícones, permissões)
 ├── eas.json                 # Perfis de build EAS (APK para Android preview)
 ├── index.js                 # Ponto de entrada do Expo
 ├── metro.config.js          # Configuração do Metro Bundler

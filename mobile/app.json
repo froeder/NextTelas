@@ -16,7 +16,7 @@
       "bundleIdentifier": "com.nexttelas.app"
     },
     "android": {
-      "package": "com.nexttelas.app",
+      "package": "com.froeder.nexttelas",
       "versionCode": 38,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,10 +24,17 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0B0C12"
       },
-      "permissions": ["INTERNET"]
+      "permissions": [
+        "INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e92068e8-8101-4789-a00c-bf42e5979f52"
+      }
     }
   }
 }
