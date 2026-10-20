@@ -81,9 +81,11 @@ const fetchTmdb = async (endpoint, params = {}) => {
  * Constrói a URL completa para a imagem do poster
  */
 export const getMoviePosterUrl = (posterPath) => {
-  if (!posterPath) return null;
-  if (posterPath.startsWith('http')) return posterPath;
-  return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
+  if (!posterPath || typeof posterPath !== 'string') return null;
+  const path = posterPath.trim();
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return `${TMDB_IMAGE_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
 /**

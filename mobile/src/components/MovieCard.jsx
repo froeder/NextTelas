@@ -11,7 +11,7 @@ import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { GenreBadge } from './GenreBadge';
 import { getGenreNames } from '../utils/tmdbGenres';
-import { getMovieDetails, formatRuntime } from '../services/tmdbService';
+import { getMovieDetails, formatRuntime, getMoviePosterUrl } from '../services/tmdbService';
 import { MovieDetailsModal } from './MovieDetailsModal';
 
 export const MovieCard = ({
@@ -33,10 +33,24 @@ export const MovieCard = ({
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [runtimeText, setRuntimeText] = useState(formatRuntime(movie?.runtime));
 
-  // Concatenação exigida para a capa do filme
-  const posterUri = movie.poster_path
-    ? 'https://image.tmdb.org/t/p/w500' + movie.poster_path
-    : null;
+  const [fallbackPoster, setFallbackPoster] = useState(null);
+
+  const posterUri = getMoviePosterUrl(movie.poster_path) || fallbackPoster;
+
+  // Se o filme salvo não tem poster_path, busca no TMDb
+  useEffect(() => {
+    let isMounted = true;
+    if (!movie.poster_path && movie?.id) {
+      getMovieDetails(movie.id).then(({ data }) => {
+        if (isMounted && data?.poster_path) {
+          setFallbackPoster(getMoviePosterUrl(data.poster_path));
+        }
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [movie?.id, movie?.poster_path]);
 
   const releaseYear = movie.release_date
     ? movie.release_date.split('-')[0]

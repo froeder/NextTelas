@@ -13,6 +13,7 @@ import { Icon } from './Icon';
 import { theme } from '../utils/theme';
 import { getGenreNames } from '../utils/tmdbGenres';
 import { MovieDetailsModal } from './MovieDetailsModal';
+import { getMoviePosterUrl } from '../services/tmdbService';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = width * 0.42;
@@ -42,9 +43,7 @@ export const MovieCarousel = ({
   };
 
   const renderItem = ({ item }) => {
-    const posterUri = item.poster_path
-      ? 'https://image.tmdb.org/t/p/w500' + item.poster_path
-      : null;
+    const posterUri = getMoviePosterUrl(item.poster_path);
 
     const rating = item.vote_average
       ? Number(item.vote_average).toFixed(1)
