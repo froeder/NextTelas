@@ -25,6 +25,7 @@
         "backgroundColor": "#0B0C12"
       },
       "permissions": [
+        "INTERNET",
         "INTERNET"
       ]
     },
@@ -35,6 +36,12 @@
       "eas": {
         "projectId": "e92068e8-8101-4789-a00c-bf42e5979f52"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e92068e8-8101-4789-a00c-bf42e5979f52"
     }
   }
 }
